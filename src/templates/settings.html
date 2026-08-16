@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Cài đặt</h1>
+</div>
+
+<div class="row g-4">
+    <!-- Cập nhật thông tin -->
+    <div class="col-lg-6">
+        <div class="glass-panel p-4 h-100">
+            <h5 style="font-weight: 700; color: var(--text-dark); margin-bottom: 1.25rem;">
+                <i class="fa-solid fa-user me-2" style="color: var(--accent-blue);"></i>Thông tin cá nhân
+            </h5>
+            <div id="infoMsg" class="alert d-none" style="font-size: 0.9rem;"></div>
+            <form id="infoForm">
+                <div class="mb-3">
+                    <label class="form-label">Tên đăng nhập</label>
+                    <input type="text" id="settingUsername" class="form-control" required>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Email</label>
+                    <input type="email" id="settingEmail" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-glass w-100">Cập nhật thông tin</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Đổi mật khẩu -->
+    <div class="col-lg-6">
+        <div class="glass-panel p-4 h-100">
+            <h5 style="font-weight: 700; color: var(--text-dark); margin-bottom: 1.25rem;">
+                <i class="fa-solid fa-lock me-2" style="color: var(--accent-blue);"></i>Đổi mật khẩu
+            </h5>
+            <div id="pwdMsg" class="alert d-none" style="font-size: 0.9rem;"></div>
+            <form id="pwdForm">
+                <div class="mb-3">
+                    <label class="form-label">Mật khẩu cũ</label>
+                    <input type="password" id="oldPwd" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mật khẩu mới</label>
+                    <input type="password" id="newPwd" class="form-control" required minlength="6">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Xác nhận mật khẩu mới</label>
+                    <input type="password" id="confirmPwd" class="form-control" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-glass w-100" style="background: var(--text-dark);">Đổi mật khẩu</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quản lý danh mục -->
+    <div class="col-12">
+        <div class="glass-panel p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 style="font-weight: 700; color: var(--text-dark); margin: 0;">
+                    <i class="fa-solid fa-tags me-2" style="color: var(--accent-blue);"></i>Quản lý danh mục
+                </h5>
+                <button class="btn btn-glass btn-sm" onclick="alert('Tính năng thêm danh mục đang hoàn thiện.')">
+                    <i class="fa-solid fa-plus me-1"></i> Thêm mới
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width: 50%;">Tên danh mục</th>
+                            <th scope="col" style="width: 30%;">Loại</th>
+                            <th scope="col" style="width: 20%;" class="text-end">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="catTableBody">
+                        <!-- Data loaded via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadSettings() {
+    // Load User Info
+    try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+            const user = await res.json();
+            document.getElementById('settingUsername').value = user.username;
+            document.getElementById('settingEmail').value = user.email;
+        }
+    } catch(e) {}
+
+    // Load Categories
+    try {
+        const catRes = await fetch('/api/categories/');
+        if (catRes.ok) {
+            const cats = await catRes.json();
+            const tbody = document.getElementById('catTableBody');
+            let html = '';
+            cats.forEach(c => {
+                const typeName = c.type === 'expense' ? 'Chi tiêu' : 'Thu nhập';
+                const badgeClass = c.type === 'expense' ? 'badge-expense' : 'badge-income';
+                html += `
+                    <tr>
+                        <td class="fw-medium">${escapeHtml(c.name)}</td>
+                        <td><span class="badge ${badgeClass} rounded-pill px-3 py-1">${typeName}</span></td>
+                        <td class="text-end">
+                            <button class="btn-action btn-action--delete" onclick="deleteCategory(${c.id})" title="Xóa">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+    } catch(e) {}
+}
+
+async function deleteCategory(id) {
+    if (confirm('Bạn có chắc muốn xóa danh mục này? Lưu ý không thể xóa danh mục đang có giao dịch.')) {
+        try {
+            const res = await fetch(`/api/categories/${id}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                showToast('Đã xóa danh mục', 'success');
+                loadSettings();
+            } else {
+                const data = await res.json();
+                showToast(data.detail || 'Lỗi xóa danh mục', 'danger');
+            }
+        } catch(e) { showToast('Lỗi kết nối', 'danger'); }
+    }
+}
+
+// Cập nhật thông tin
+document.getElementById('infoForm').addEventListener('submit', async(e) => {
+    e.preventDefault();
+    const username = document.getElementById('settingUsername').value;
+    const email = document.getElementById('settingEmail').value;
+    
+    try {
+        const res = await fetch('/api/auth/me', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, email })
+        });
+        if (res.ok) {
+            msg.className = 'alert alert-danger';
+            msg.textContent = data.detail || 'Lỗi cập nhật';
+        }
+        msg.classList.remove('d-none');
+    } catch(err) {
+        msg.className = 'alert alert-danger';
+        msg.textContent = 'Lỗi kết nối';
+        msg.classList.remove('d-none');
+    }
+});
+
+// Đổi mật khẩu
+document.getElementById('pwdForm').addEventListener('submit', async(e) => {
+    e.preventDefault();
+    const msg = document.getElementById('pwdMsg');
+    const oldPwd = document.getElementById('oldPwd').value;
+    const newPwd = document.getElementById('newPwd').value;
+    const confirmPwd = document.getElementById('confirmPwd').value;
+
+    if (newPwd !== confirmPwd) {
+        msg.className = 'alert alert-danger';
+        msg.textContent = 'Mật khẩu xác nhận không khớp!';
+        msg.classList.remove('d-none');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/auth/password', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ old_password: oldPwd, new_password: newPwd })
+        });
+        if (res.ok) {
+            msg.className = 'alert alert-success';
+            msg.textContent = 'Đổi mật khẩu thành công!';
+            document.getElementById('pwdForm').reset();
+        } else {
+            const data = await res.json();
+            msg.className = 'alert alert-danger';
+            msg.textContent = data.detail || 'Lỗi đổi mật khẩu';
+        }
+        msg.classList.remove('d-none');
+    } catch(err) {
+        msg.className = 'alert alert-danger';
+        msg.textContent = 'Lỗi kết nối';
+        msg.classList.remove('d-none');
+    }
+});
+
+loadSettings();
+</script>
+{% endblock %}

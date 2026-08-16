@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Thống kê & Báo cáo</h1>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="glass-panel kpi-card">
+            <div class="kpi-icon income">
+                <i class="fa-solid fa-arrow-trend-down"></i>
+            </div>
+            <div class="kpi-info">
+                <h3>Tổng Thu</h3>
+                <p id="statsTotalIncome">0 ₫</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-panel kpi-card">
+            <div class="kpi-icon expense">
+                <i class="fa-solid fa-arrow-trend-up"></i>
+            </div>
+            <div class="kpi-info">
+                <h3>Tổng Chi</h3>
+                <p id="statsTotalExpense">0 ₫</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-panel kpi-card">
+            <div class="kpi-icon balance">
+                <i class="fa-solid fa-wallet"></i>
+            </div>
+            <div class="kpi-info">
+                <h3>Số Dư</h3>
+                <p id="statsBalance" style="color: var(--accent-blue);">0 ₫</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Phân bổ chi tiêu -->
+    <div class="col-lg-6">
+        <div class="glass-panel p-4 h-100">
+            <h5 style="font-weight: 700; color: var(--text-dark); margin-bottom: 1.25rem;">
+                <i class="fa-solid fa-chart-pie me-2" style="color: var(--accent-blue);"></i>Phân bổ chi tiêu
+            </h5>
+            <div id="doughnutContainer" style="position: relative; height:300px; width:100%;">
+                <canvas id="categoryChart"></canvas>
+                <div id="noDataCategory" class="d-none empty-state">
+                    <div class="empty-state__icon"><i class="fa-solid fa-chart-pie"></i></div>
+                    <p class="empty-state__text">Không đủ dữ liệu cho biểu đồ này</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Xu hướng 6 tháng -->
+    <div class="col-lg-6">
+        <div class="glass-panel p-4 h-100">
+            <h5 style="font-weight: 700; color: var(--text-dark); margin-bottom: 1.25rem;">
+                <i class="fa-solid fa-chart-column me-2" style="color: var(--accent-blue);"></i>Xu hướng Thu - Chi 6 tháng
+            </h5>
+            <div id="barContainer" style="position: relative; height:300px; width:100%;">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+Chart.defaults.color = '#94A3B8';
+Chart.defaults.font.family = "'Inter', sans-serif";
+
+async function loadStats() {
+    // Load Summary
+    try {
+        const sumRes = await fetch('/api/reports/summary');
+        if (sumRes.ok) {
+            const s = await sumRes.json();
+            document.getElementById('statsTotalIncome').innerText = s.total_income.toLocaleString('vi-VN') + ' ₫';
+            document.getElementById('statsTotalExpense').innerText = s.total_expense.toLocaleString('vi-VN') + ' ₫';
+            document.getElementById('statsBalance').innerText = s.balance.toLocaleString('vi-VN') + ' ₫';
+        }
+    } catch(e) { console.error(e); }
+
+    // Load Category Chart
+    try {
+        const catRes = await fetch('/api/reports/by_category');
+        if (catRes.ok) {
+            const catData = await catRes.json();
+            const expenses = catData.filter(c => c.type === 'expense');
+
+            if (expenses.length === 0) {
+                document.getElementById('categoryChart').style.display = 'none';
+                document.getElementById('noDataCategory').classList.remove('d-none');
+            } else {
+                const ctx = document.getElementById('categoryChart').getContext('2d');
+                const palette = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#84CC16', '#64748B'];
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: expenses.map(e => e.category),
+                        datasets: [{
+                            data: expenses.map(e => e.total),
+                            backgroundColor: palette.slice(0, expenses.length),
+                            borderWidth: 0,
+                            hoverOffset: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right', labels: { padding: 16, usePointStyle: true } } },
+                        cutout: '65%'
+                    }
+                });
+            }
+        }
+    } catch(e) { console.error(e); }
+
+    // Load Trend Chart
+    try {
+        const trendRes = await fetch('/api/reports/monthly_trend');
+        if (trendRes.ok) {
+            const trendData = await trendRes.json();
+            const ctx2 = document.getElementById('trendChart').getContext('2d');
+            
+            new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: trendData.map(d => d.month),
+                    datasets: [
+                        {
+                            label: 'Thu nhập',
+                            data: trendData.map(d => d.income),
+                            backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Chi tiêu',
+                            data: trendData.map(d => d.expense),
+                            backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true } } }
+                }
+            });
+        }
+    } catch(e) { console.error(e); }
+}
+
+loadStats();
+</script>
+{% endblock %}

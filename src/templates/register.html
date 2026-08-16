@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="glass-panel auth-card">
+        <div class="text-center mb-4">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">
+                <i class="fa-solid fa-wallet" style="color: var(--accent-blue);"></i>
+            </div>
+            <h2 class="fw-bold mb-1">Đăng Ký</h2>
+            <p class="text-muted">Bắt đầu quản lý tài chính thông minh</p>
+        </div>
+
+        <div id="errorMsg" class="alert alert-danger d-none" style="font-size: 0.9rem;"></div>
+
+        <form id="registerForm">
+            <div class="mb-3">
+                <label class="form-label">Tên đăng nhập</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                    <input type="text" class="form-control" id="username" placeholder="Nhập tên đăng nhập" required>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
+                    <input type="email" class="form-control" id="email" placeholder="Nhập email" required>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="form-label">Mật khẩu</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                    <input type="password" class="form-control" id="password" placeholder="Nhập mật khẩu (ít nhất 6 ký tự)" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-glass w-100 mb-3">Đăng ký</button>
+        </form>
+
+        <div class="text-center mt-2">
+            <span class="text-muted" style="font-size: 0.9rem;">Đã có tài khoản?</span>
+            <a href="/login">Đăng nhập</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const errorMsg = document.getElementById('errorMsg');
+
+    try {
+        const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username, email, password})
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            alert('Đăng ký thành công! Vui lòng đăng nhập.');
+            window.location.href = '/login';
+        } else {
+            errorMsg.textContent = data.detail || 'Lỗi đăng ký';
+            errorMsg.classList.remove('d-none');
+        }
+    } catch (err) {
+        errorMsg.textContent = 'Không thể kết nối đến server';
+        errorMsg.classList.remove('d-none');
+    }
+});
+</script>
+{% endblock %}

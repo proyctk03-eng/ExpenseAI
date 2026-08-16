@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Lịch sử Giao dịch</h1>
+</div>
+
+<!-- Filter Bar -->
+<div class="glass-panel p-3 mb-4">
+    <form id="filterForm" class="row g-3 align-items-end" onsubmit="event.preventDefault(); loadTransactions();">
+        <div class="col-md-4">
+            <label class="form-label">Tìm kiếm</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" class="form-control" id="searchKeyword" placeholder="Tìm theo mô tả...">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Từ ngày</label>
+            <input type="date" class="form-control" id="startDate">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Đến ngày</label>
+            <input type="date" class="form-control" id="endDate">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-glass w-100">
+                <i class="fa-solid fa-filter me-1"></i> Lọc
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Transactions Table -->
+<div class="glass-panel p-4">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th scope="col" style="width: 5%;">#</th>
+                    <th scope="col" style="width: 13%;">Ngày</th>
+                    <th scope="col" style="width: 15%;">Danh mục</th>
+                    <th scope="col" style="width: 32%;">Mô tả</th>
+                    <th scope="col" style="width: 18%;">Số tiền</th>
+                    <th scope="col" style="width: 17%;" class="text-end">Hành động</th>
+                </tr>
+            </thead>
+            <tbody id="txTableBody">
+                <!-- Data loaded via JS -->
+            </tbody>
+        </table>
+        <div id="noTxMsg" class="d-none empty-state">
+            <div class="empty-state__icon"><i class="fa-solid fa-box-open"></i></div>
+            <p class="empty-state__text">Không tìm thấy giao dịch nào phù hợp.</p>
+            <button class="btn btn-glass btn-sm mt-2" onclick="openCreateModal()">
+                <i class="fa-solid fa-plus me-1"></i> Thêm giao dịch mới
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openCreateModal()" title="Thêm giao dịch mới">
+    <i class="fa-solid fa-plus"></i>
+</button>
+
+<!-- Modal Form -->
+{% include "transaction_form.html" %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let txCounter = 0;
+
+async function loadTransactions() {
+    const search = document.getElementById('searchKeyword')?.value || '';
+    const start_date = document.getElementById('startDate')?.value || '';
+    const end_date = document.getElementById('endDate')?.value || '';
+
+    let url = '/api/transactions/?';
+    if (search) url += `search=${encodeURIComponent(search)}&`;
+    if (start_date) url += `start_date=${start_date}&`;
+    if (end_date) url += `end_date=${end_date}&`;
+
+    try {
+        const res = await fetch(url);
+        if (res.ok) {
+            const data = await res.json();
+            const tbody = document.getElementById('txTableBody');
+            const noTxMsg = document.getElementById('noTxMsg');
+
+            tbody.innerHTML = '';
+            txCounter = 0;
+
+            if (data.length === 0) {
+                noTxMsg.classList.remove('d-none');
+            } else {
+                noTxMsg.classList.add('d-none');
+                data.forEach(tx => {
+                    txCounter++;
+                    const isExpense = tx.amount > 0;
+                    const badgeClass = isExpense ? 'badge-expense' : 'badge-income';
+                    const sign = isExpense ? '-' : '+';
+                    const amountText = Math.abs(tx.amount).toLocaleString('vi-VN') + ' ₫';
+                    const catName = tx.category_name || tx.category || 'Chưa phân loại';
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="text-muted fw-medium">${txCounter}</td>
+                            <td>
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">
+                                    <i class="fa-regular fa-calendar me-1"></i>${tx.transaction_date}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge badge-category rounded-pill px-3 py-1">${escapeHtml(catName)}</span>
+                            </td>
+                            <td class="fw-medium" style="color: var(--text-dark);">${escapeHtml(tx.description)}</td>
+                            <td>
+                                <span class="badge ${badgeClass} rounded-pill px-3 py-2" style="font-size: 0.85rem;">
+                                    ${sign}${amountText}
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <button class="btn-action btn-action--edit" onclick="editTx(${tx.id})" title="Sửa">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button class="btn-action btn-action--delete" onclick="deleteTx(${tx.id})" title="Xóa">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+    } catch (e) {
+        showToast('Lỗi tải danh sách', 'danger');
+    }
+}
+
+async function deleteTx(id) {
+    if (confirm('Bạn có chắc muốn xóa giao dịch này?')) {
+        await fetch(`/api/transactions/${id}`, {
+            method: 'DELETE'
+        });
+        loadTransactions();
+    }
+}
+
+function editTx(id) {
+    showToast('Tính năng sửa giao dịch đang được phát triển.', 'info');
+}
+
+loadTransactions();
+</script>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Hỗ trợ & Liên hệ</h1>
+</div>
+
+<div class="row g-4">
+    <!-- FAQ -->
+    <div class="col-lg-7">
+        <div class="glass-panel p-4 h-100">
+            <h5 style="font-weight: 700; color: var(--text-dark); margin-bottom: 1.25rem;">
+                <i class="fa-solid fa-circle-question me-2" style="color: var(--accent-blue);"></i>Câu hỏi thường gặp (FAQ)
+            </h5>
+            <div class="accordion" id="faqAccordion">
+                <div class="accordion-item" style="border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 10px; border: 1px solid var(--border-color);">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed fw-medium" type="button" data-bs-toggle="collapse" data-bs-target="#faq1" style="background: var(--bg-card); color: var(--text-dark); box-shadow: none;">
+                            Làm sao để AI tự phân loại giao dịch?
+                        </button>
+                    </h2>
+                    <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body text-muted" style="font-size: 0.95rem;">
+                            Khi bạn thêm mới một giao dịch, bạn chỉ cần nhập "Mô tả" (ví dụ: Ăn sáng bánh mì). Hệ thống AI sẽ tự động phân tích và gán giao dịch đó vào danh mục "Ăn uống". Bạn không cần chọn thủ công.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item" style="border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 10px; border: 1px solid var(--border-color);">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed fw-medium" type="button" data-bs-toggle="collapse" data-bs-target="#faq2" style="background: var(--bg-card); color: var(--text-dark); box-shadow: none;">
+                            Tôi có thể xóa các danh mục mặc định không?
+                        </button>
+                    </h2>
+                    <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body text-muted" style="font-size: 0.95rem;">
+                            Bạn có thể quản lý danh mục trong phần Cài đặt. Tuy nhiên, các danh mục đang có giao dịch liên kết sẽ không thể bị xóa để đảm bảo toàn vẹn dữ liệu.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item" style="border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 10px; border: 1px solid var(--border-color);">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed fw-medium" type="button" data-bs-toggle="collapse" data-bs-target="#faq3" style="background: var(--bg-card); color: var(--text-dark); box-shadow: none;">
+                            Tính năng AI Tư vấn hoạt động như thế nào?
+                        </button>
+                    </h2>
+                    <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body text-muted" style="font-size: 0.95rem;">
+                            Dựa trên lịch sử chi tiêu của bạn trong 30 ngày gần nhất, AI sẽ phân tích các thói quen tiêu tiền và đưa ra lời khuyên cá nhân hóa giúp bạn tiết kiệm hoặc tối ưu hóa chi tiêu. Yêu cầu tối thiểu 5 giao dịch để AI có đủ dữ liệu phân tích.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Form -->
+    <div class="col-lg-5">
+        <div class="glass-panel p-4 h-100">
+            <h5 style="font-weight: 700; color: var(--text-dark); margin-bottom: 1.25rem;">
+                <i class="fa-solid fa-paper-plane me-2" style="color: var(--accent-blue);"></i>Gửi phản hồi
+            </h5>
+            <div id="contactMsg" class="alert d-none" style="font-size: 0.9rem;"></div>
+            <form id="contactForm">
+                <div class="mb-3">
+                    <label class="form-label">Chủ đề</label>
+                    <input type="text" id="contactSubject" class="form-control" required placeholder="Ví dụ: Báo lỗi tính năng">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Nội dung tin nhắn</label>
+                    <textarea id="contactMessage" class="form-control" rows="5" required placeholder="Bạn cần hỗ trợ gì?"></textarea>
+                </div>
+                <button type="submit" class="btn btn-glass w-100">
+                    Gửi yêu cầu
+                </button>
+            </form>
+            <div class="mt-4 text-center">
+                <a href="#" class="text-muted" style="font-size: 0.85rem; text-decoration: none;">Đọc Điều khoản sử dụng & Chính sách bảo mật</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('contactForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    const msg = document.getElementById('contactMsg');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang gửi...';
+
+    // Simulate API call for feedback (chưa có endpoint backend)
+    setTimeout(() => {
+        msg.className = 'alert alert-success';
+        msg.textContent = 'Cảm ơn bạn đã phản hồi. Chúng tôi sẽ ghi nhận và liên hệ lại sớm nhất!';
+        msg.classList.remove('d-none');
+        e.target.reset();
+        
+        btn.disabled = false;
+        btn.innerHTML = 'Gửi yêu cầu';
+    }, 1000);
+});
+</script>
+{% endblock %}

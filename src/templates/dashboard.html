@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h1>Tổng quan</h1>
+    <div class="d-flex gap-2">
+        <select id="timeRangeSelector" class="form-select bg-glass border-glass shadow-none" style="width: auto;" onchange="loadDashboard()">
+            <option value="this_month" selected>Tháng này</option>
+            <option value="today">Hôm nay</option>
+            <option value="this_week">Tuần này</option>
+            <option value="this_year">Năm nay</option>
+            <option value="all_time">Tất cả</option>
+        </select>
+        <a href="/transactions" class="btn btn-glass">
+            <i class="fa-solid fa-plus"></i> Thêm giao dịch
+        </a>
+    </div>
+</div>
+
+<!-- 3 KPI Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="glass-panel kpi-card">
+            <div class="kpi-icon income">
+                <i class="fa-solid fa-arrow-trend-down"></i>
+            </div>
+            <div class="kpi-info">
+                <h3>Tổng Thu</h3>
+                <p id="totalIncome">0 ₫</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-panel kpi-card">
+            <div class="kpi-icon expense">
+                <i class="fa-solid fa-arrow-trend-up"></i>
+            </div>
+            <div class="kpi-info">
+                <h3>Tổng Chi</h3>
+                <p id="totalExpense">0 ₫</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-panel kpi-card">
+            <div class="kpi-icon balance">
+                <i class="fa-solid fa-wallet"></i>
+            </div>
+            <div class="kpi-info">
+                <h3>Số Dư</h3>
+                <p id="balance" style="color: var(--accent-blue);">0 ₫</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart + AI Advice Row -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="glass-panel p-4 h-100">
+            <h5 style="font-weight: 700; color: var(--text-dark); margin-bottom: 1.25rem;">
+                <i class="fa-solid fa-chart-pie me-2" style="color: var(--accent-blue);"></i>Phân bổ chi tiêu
+            </h5>
+            <div id="chartContainer" style="position: relative; height:280px; width:100%;">
+                <canvas id="expenseChart"></canvas>
+                <div id="noDataMsg" class="d-none empty-state">
+                    <div class="empty-state__icon"><i class="fa-solid fa-chart-pie"></i></div>
+                    <p class="empty-state__text">Chưa có giao dịch, hãy thêm chi tiêu để xem biểu đồ</p>
+                    <a href="/transactions" class="btn btn-glass btn-sm mt-3"><i class="fa-solid fa-plus me-1"></i>Thêm giao dịch</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="glass-panel p-4 h-100 ai-advice-box">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="kpi-icon" style="background: rgba(59,130,246,0.1); color: var(--accent-blue);">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <h5 style="font-weight: 700; color: var(--text-dark); margin: 0;">AI Tư vấn</h5>
+            </div>
+            <p id="aiAdvice" class="fst-italic" style="line-height: 1.7; color: var(--text-body); min-height: 60px;">
+                Đang phân tích dữ liệu chi tiêu của bạn...
+            </p>
+            <button class="btn btn-outline-secondary btn-sm w-100 mt-2" onclick="loadDashboard()">
+                <i class="fa-solid fa-rotate-right me-1"></i> Tạo gợi ý mới
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Transactions -->
+<div class="glass-panel p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 style="font-weight: 700; color: var(--text-dark); margin: 0;">
+            <i class="fa-solid fa-clock-rotate-left me-2" style="color: var(--accent-blue);"></i>Giao dịch gần đây
+        </h5>
+        <a href="/transactions" class="btn btn-outline-secondary btn-sm">Xem tất cả</a>
+    </div>
+    <div id="recentTxList">
+        <div class="empty-state" id="noRecentTx">
+            <div class="empty-state__icon"><i class="fa-solid fa-inbox"></i></div>
+            <p class="empty-state__text">Chưa có giao dịch nào.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+Chart.defaults.color = '#94A3B8';
+Chart.defaults.font.family = "'Inter', sans-serif";
+
+async function loadDashboard() {
+    const timeRange = document.getElementById('timeRangeSelector').value;
+
+    // Load summary
+    try {
+        const sumRes = await fetch(`/api/dashboard/summary?time_range=${timeRange}`);
+        if (sumRes.ok) {
+            const s = await sumRes.json();
+            document.getElementById('totalIncome').innerText = s.total_income.toLocaleString('vi-VN') + ' ₫';
+            document.getElementById('totalExpense').innerText = s.total_expense.toLocaleString('vi-VN') + ' ₫';
+            document.getElementById('balance').innerText = s.balance.toLocaleString('vi-VN') + ' ₫';
+        } else {
+            showToast('Lỗi tải tóm tắt', 'danger');
+        }
+    } catch (e) { console.error('Summary error:', e); }
+
+    // Load chart
+    try {
+        const catRes = await fetch(`/api/dashboard/category-breakdown?time_range=${timeRange}`);
+        if (catRes.ok) {
+            const catData = await catRes.json();
+
+            if (catData.data.length === 0) {
+                document.getElementById('expenseChart').style.display = 'none';
+                document.getElementById('noDataMsg').classList.remove('d-none');
+            } else {
+                document.getElementById('expenseChart').style.display = 'block';
+                document.getElementById('noDataMsg').classList.add('d-none');
+
+                const ctx = document.getElementById('expenseChart').getContext('2d');
+                
+                // Destroy old chart instance if exists
+                if(window.expenseChartInst) {
+                    window.expenseChartInst.destroy();
+                }
+
+                window.expenseChartInst = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: catData.labels,
+                        datasets: [{
+                            data: catData.data,
+                            backgroundColor: catData.colors,
+                            borderWidth: 0,
+                            hoverOffset: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right', labels: { padding: 16, usePointStyle: true } } },
+                        cutout: '65%'
+                    }
+                });
+            }
+        } else {
+            showToast('Lỗi tải biểu đồ', 'danger');
+        }
+    } catch (e) { console.error('Chart error:', e); }
+
+    // Load AI Advice
+    try {
+        document.getElementById('aiAdvice').innerText = 'Đang phân tích...';
+        const advRes = await fetch('/api/advice/', { method: 'POST' });
+        if (advRes.ok) {
+            const advData = await advRes.json();
+            document.getElementById('aiAdvice').innerText = advData.advice;
+        } else {
+            document.getElementById('aiAdvice').innerText = 'Hãy thêm ít nhất 5 giao dịch để AI có thể phân tích và đưa ra lời khuyên.';
+        }
+    } catch (e) {
+        showToast('Lỗi kết nối khi tải dashboard', 'danger');
+    }
+
+    // Load Recent Transactions (5 newest)
+    try {
+        const txRes = await fetch('/api/transactions/');
+        if (txRes.ok) {
+            const txData = await txRes.json();
+            const recent = txData.slice(0, 5);
+            const container = document.getElementById('recentTxList');
+            const noMsg = document.getElementById('noRecentTx');
+
+            if (recent.length === 0) {
+                noMsg.style.display = 'block';
+            } else {
+                noMsg.style.display = 'none';
+                let html = '';
+                recent.forEach(tx => {
+                    const isExpense = tx.amount > 0;
+                    const iconClass = isExpense ? 'recent-tx__icon--expense' : 'recent-tx__icon--income';
+                    const iconFA = isExpense ? 'fa-arrow-up' : 'fa-arrow-down';
+                    const amtClass = isExpense ? 'recent-tx__amount--expense' : 'recent-tx__amount--income';
+                    const sign = isExpense ? '-' : '+';
+
+                    html += `
+                    <div class="recent-tx__row">
+                        <div class="recent-tx__info">
+                            <div class="recent-tx__icon ${iconClass}">
+                                <i class="fa-solid ${iconFA}"></i>
+                            </div>
+                            <div>
+                                <div class="recent-tx__desc">${escapeHtml(tx.description)}</div>
+                                <div class="recent-tx__date">${escapeHtml(tx.transaction_date)}</div>
+                            </div>
+                        </div>
+                        <div class="recent-tx__amount ${amtClass}">
+                            ${sign}${Math.abs(tx.amount).toLocaleString('vi-VN')} ₫
+                        </div>
+                    </div>`;
+                });
+                container.innerHTML = html;
+            }
+        }
+    } catch (e) { console.error('Recent TX error:', e); }
+}
+
+loadDashboard();
+</script>
+{% endblock %}

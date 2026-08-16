@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExpenseAI - Quản lý chi tiêu thông minh</title>
+    <meta name="description" content="Ứng dụng quản lý chi tiêu cá nhân tích hợp AI tự động phân loại và tư vấn tài chính.">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar__brand">
+                <i class="fa-solid fa-wallet" style="color: var(--accent-cyan);"></i>
+                <span>Expense<span style="color: var(--accent-cyan);">AI</span></span>
+            </div>
+            <ul class="sidebar__nav">
+                <li class="nav__item">
+                    <a class="nav__link" href="/" id="nav-dashboard">
+                        <i class="fa-solid fa-chart-pie"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav__item">
+                    <a class="nav__link" href="/transactions" id="nav-transactions">
+                        <i class="fa-solid fa-exchange-alt"></i> Giao dịch
+                    </a>
+                </li>
+                <li class="nav__item">
+                    <a class="nav__link" href="/stats" id="nav-stats">
+                        <i class="fa-solid fa-chart-line"></i> Thống kê
+                    </a>
+                </li>
+                <li class="nav__item">
+                    <a class="nav__link" href="/settings" id="nav-settings">
+                        <i class="fa-solid fa-gear"></i> Cài đặt
+                    </a>
+                </li>
+                <li class="nav__item">
+                    <a class="nav__link" href="/support" id="nav-support">
+                        <i class="fa-solid fa-circle-question"></i> Hỗ trợ
+                    </a>
+                </li>
+            </ul>
+            <div class="sidebar__footer">
+                <a href="#" class="nav__link nav__link--logout" onclick="logout()">
+                    <i class="fa-solid fa-sign-out-alt"></i> Đăng xuất
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="main-area">
+            <!-- Mobile Top Bar -->
+            <div class="mobile-topbar" id="mobile-topbar">
+                <div class="mobile-topbar__brand">
+                    <i class="fa-solid fa-wallet" style="color: var(--accent-cyan);"></i>
+                    <span>Expense<span style="color: var(--accent-cyan);">AI</span></span>
+                </div>
+                <button class="mobile-topbar__toggle" id="hamburgerBtn" aria-label="Toggle menu">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+
+            <!-- Page Content -->
+            <main class="main-content" id="main-content">
+                {% block content %}{% endblock %}
+            </main>
+
+            <!-- Footer -->
+            <footer class="app-footer">
+                <span>© 2026 ExpenseAI. Made with <span style="color: #F87171;">❤️</span></span>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Nút Scroll to Top -->
+    <button class="scroll-top" id="scrollTopBtn" title="Lên đầu trang">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 10000">
+        <div id="liveToast" class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMessage">
+                    Thông báo
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showToast(message, type = 'primary') {
+            const toastEl = document.getElementById('liveToast');
+            const toastBody = document.getElementById('toastMessage');
+            toastEl.className = `toast align-items-center text-bg-${type} border-0`;
+            toastBody.textContent = message;
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+        }
+
+        // Thay thế fetch API global để tự động xử lý token expiration
+        const originalFetch = window.fetch;
+        window.fetch = async function() {
+            let response = await originalFetch.apply(this, arguments);
+            if (response.status === 401 && !arguments[0].includes('/auth/login') && !arguments[0].includes('/auth/refresh')) {
+                // Thử gọi refresh token
+                try {
+                    const refreshRes = await originalFetch('/api/auth/refresh', {
+                        method: 'POST'
+                    });
+                    if (refreshRes.ok) {
+                        // Gọi lại request ban đầu (cookie đã được tự động lưu)
+                        return originalFetch.apply(this, arguments);
+                    } else {
+                        // Refresh thất bại, redirect ra trang đăng nhập
+                        window.location.href = '/login';
+                        return response;
+                    }
+                } catch (e) {
+                    window.location.href = '/login';
+                }
+            }
+            return response;
+        };
+
+        // === XSS Protection: escape HTML trước khi chèn vào DOM ===
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+
+        const isAuthPage = window.location.pathname === '/login' || window.location.pathname === '/register';
+
+        if (!isAuthPage) {
+            // Đánh dấu active menu
+            const path = window.location.pathname;
+            if (path === '/') {
+                document.getElementById('nav-dashboard')?.classList.add('active');
+            } else if (path === '/transactions') {
+                document.getElementById('nav-transactions')?.classList.add('active');
+            } else if (path === '/stats') {
+                document.getElementById('nav-stats')?.classList.add('active');
+            } else if (path === '/settings') {
+                document.getElementById('nav-settings')?.classList.add('active');
+            } else if (path === '/support') {
+                document.getElementById('nav-support')?.classList.add('active');
+            }
+        } else {
+            // Chưa đăng nhập: ẩn sidebar, footer, fix layout
+            if (sidebar) sidebar.style.display = 'none';
+            const topbar = document.getElementById('mobile-topbar');
+            if (topbar) topbar.style.display = 'none';
+            const footer = document.querySelector('.app-footer');
+            if (footer) footer.style.display = 'none';
+            const mainArea = document.querySelector('.main-area');
+            if (mainArea) mainArea.style.marginLeft = '0';
+        }
+
+        // Hamburger toggle
+        hamburgerBtn?.addEventListener('click', () => {
+            sidebar.classList.toggle('sidebar--open');
+            overlay.classList.toggle('sidebar-overlay--active');
+        });
+        overlay?.addEventListener('click', () => {
+            sidebar.classList.remove('sidebar--open');
+            overlay.classList.remove('sidebar-overlay--active');
+        });
+
+        // Global logout function
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+            } catch (e) {
+                console.error('Logout error', e);
+                window.location.href = '/login';
+            }
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
