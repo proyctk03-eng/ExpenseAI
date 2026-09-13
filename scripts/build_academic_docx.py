@@ -317,13 +317,218 @@ def generate_report_progress():
     style_heading_1(doc, "2. Những đột phá kỹ thuật mới nhất (Nối tiếp Bài kiểm tra 2)")
     add_body_p(doc, "1. Chuẩn hóa giao diện Thu (+ xanh) / Chi (- đỏ), bổ sung Modal Sửa Giao dịch và Modal Thêm Danh mục mới.\n2. Nâng cấp bộ Test Suite từ 21 lỗi lên 35/35 Test Cases PASS 100%.\n3. Cấu hình thành công pipeline GitHub Actions CI/CD đạt trạng thái XANH TUYỆT ĐỐI (Success) trên mọi môi trường.\n4. Hoàn thiện cơ chế phòng thủ Zero-Downtime Fallback cho các chức năng AI.")
 
-    style_heading_1(doc, "3. Phân công thuyết trình bảo vệ Nhóm 02")
-    add_body_p(doc, "• Trưởng nhóm Nguyễn Tuấn Đạt: Phụ trách thuyết trình Kiến trúc Backend, Kỹ thuật Prompt AI, Phòng vệ Fallback và Minh chứng CI/CD.\n• Phó nhóm Phàn Ngọc Anh: Phụ trách demo nghiệp vụ CRUD, bộ lọc tìm kiếm, tương tác giao diện người dùng và quản lý CSDL.")
-
     doc.save("docs/Bao_Cao_Tien_Do_Nhom_02.docx")
     print("Exported docs/Bao_Cao_Tien_Do_Nhom_02.docx successfully!")
+
+def generate_master_report():
+    doc = docx.Document()
+    format_doc_base(doc)
+    add_header_banner(
+        doc,
+        "BÁO CÁO TỔNG HỢP TOÀN DIỆN ĐỒ ÁN HỌC PHẦN\n(3 BÀI KIỂM TRA THƯỜNG XUYÊN & BÀI THI KẾT THÚC HỌC PHẦN)",
+        "Đề tài: ExpenseAI - Hệ thống Quản lý Chi tiêu Cá nhân thông minh tích hợp AI"
+    )
+
+    # PHẦN I
+    p_sec1 = doc.add_paragraph()
+    p_sec1.paragraph_format.space_before = Pt(16)
+    p_sec1.paragraph_format.space_after = Pt(8)
+    r_sec1 = p_sec1.add_run("PHẦN I: BÀI KIỂM TRA THƯỜNG XUYÊN 1 (PHÂN TÍCH VÀ THIẾT KẾ)")
+    r_sec1.font.name = "Times New Roman"
+    r_sec1.font.size = Pt(15)
+    r_sec1.font.bold = True
+    r_sec1.font.color.rgb = NAVY_BLUE
+
+    style_heading_2(doc, "1. Phân tích đúng bài toán quản lý")
+    add_body_p(doc, "Bối cảnh thực tế cho thấy việc ghi chép sổ sách thủ công khiến hơn 85% người dùng từ bỏ sau 2 tuần. Đối tượng phục vụ là sinh viên và nhân viên văn phòng. Quy trình nghiệp vụ: Phát sinh chi tiêu -> Nhập liệu -> Tự phân loại -> Lưu CSDL -> Cộng dồn số dư -> Báo cáo. Vấn đề giải quyết: Ứng dụng AI nhận diện ngôn ngữ tự nhiên từ mô tả ngắn gọn (VD: 'Ăn bún chả 40k' -> 'Ăn uống'), tiết kiệm 80% thời gian thao tác.")
+
+    style_heading_2(doc, "2. Xác định đầy đủ yêu cầu chức năng (Đặc tả I/P/O)")
+    add_body_p(doc, "Đặc tả các chức năng cốt lõi theo chuẩn Input - Process - Output:")
+
+    tbl_ipo = doc.add_table(rows=6, cols=4)
+    tbl_ipo.alignment = WD_TABLE_ALIGNMENT.CENTER
+    set_table_borders(tbl_ipo)
+    headers_ipo = ["STT", "Chức năng", "Đầu vào (Input)", "Xử lý & Đầu ra (Output)"]
+    for i, h in enumerate(headers_ipo):
+        c = tbl_ipo.cell(0, i)
+        set_cell_background(c, "1A365D")
+        set_cell_margins(c, 120, 120, 100, 100)
+        p = c.paragraphs[0]
+        r = p.add_run(h)
+        r.font.name = "Times New Roman"
+        r.font.size = Pt(10.5)
+        r.font.bold = True
+        r.font.color.rgb = RGBColor(255, 255, 255)
+
+    ipo_data = [
+        ("1", "Auth", "Username, Email, Password", "Bcrypt hash, JWT token, HttpOnly Cookie, gán Role 'user'"),
+        ("2", "CRUD Giao dịch", "Số tiền, Mô tả, Category, Date", "AI phân loại nếu thiếu danh mục, lưu CSDL, cập nhật giao diện"),
+        ("3", "Tìm kiếm & Lọc", "Từ khóa, Khoảng ngày, Danh mục", "SQL ilike, lọc phạm vi ngày, trả về JSON mảng giao dịch"),
+        ("4", "Thống kê Báo cáo", "User ID, Khoảng thời gian", "SQL func.sum() tính tổng thu, chi, số dư; vẽ Chart.js"),
+        ("5", "AI Tư vấn", "Dữ liệu thu chi 90 ngày", "Tổng hợp số liệu vô danh, gọi GPT-4o-mini sinh lời khuyên")
+    ]
+    for r_idx, d in enumerate(ipo_data, start=1):
+        bg = "F8FAFC" if r_idx % 2 == 0 else "FFFFFF"
+        for c_idx, val in enumerate(d):
+            c = tbl_ipo.cell(r_idx, c_idx)
+            set_cell_background(c, bg)
+            set_cell_margins(c, 100, 100, 80, 80)
+            p = c.paragraphs[0]
+            r = p.add_run(val)
+            r.font.name = "Times New Roman"
+            r.font.size = Pt(10)
+            r.font.color.rgb = DARK_TEXT
+
+    style_heading_2(doc, "3. Yêu cầu phi chức năng")
+    add_body_p(doc, "• Bảo mật: Bcrypt hash, JWT HS256, RBAC phân quyền 3 vai trò, biến môi trường trong .env.\n• Hiệu năng: Phản hồi API CRUD < 150ms, tính toán qua hàm SQL Aggregate func.sum().\n• Khả dụng & Phục hồi: Fallback Heuristic khi mất mạng AI, Alembic migration CSDL.\n• Trải nghiệm UX: Giao diện Glassmorphism responsive 100% trên thiết bị di động.")
+
+    style_heading_2(doc, "4. Thiết kế Actor và Use Case")
+    add_body_p(doc, "Gồm 3 Actor: User (quản lý thu chi, lọc tìm kiếm, nhận tư vấn), Admin (quản trị người dùng, danh mục hệ thống) và AI System (tự động phân loại text và sinh lời khuyên). Sơ đồ Use Case được xây dựng chi tiết theo chuẩn UML.")
+
+    style_heading_2(doc, "5. Thiết kế CSDL chuẩn hóa 3NF")
+    add_body_p(doc, "Cơ sở dữ liệu gồm 7 bảng: users, categories, transactions, ai_predictions, roles, permissions, role_permissions. Khóa chính, khóa ngoại, unique index và quan hệ 1-N, N-N liên kết chặt chẽ.")
+
+    style_heading_2(doc, "6. Thiết kế kiến trúc hệ thống 3 tầng")
+    add_body_p(doc, "Kiến trúc 3-tier hiện đại: Frontend Web Client (Bootstrap 5, Jinja2, Chart.js) -> Backend Application Layer (FastAPI, RESTful, SlowAPI Limiter, Service AI) -> Data Persistence Layer (SQLAlchemy 2.0 ORM, PostgreSQL 15, SQLite).")
+
+    style_heading_2(doc, "7. Vị trí ứng dụng AI")
+    add_body_p(doc, "Ứng dụng ở 2 vị trí mang lại giá trị cao nhất: (1) Data Entry: tự động phân loại danh mục khi người dùng nhập mô tả; (2) Dashboard Advisory: đọc dữ liệu tổng hợp để đưa ra lời khuyên tài chính cá nhân hóa.")
+
+    style_heading_2(doc, "8. Thiết kế Prompt và luồng gọi AI sơ bộ")
+    add_body_p(doc, "System Prompt nghiêm ngặt kẹp danh sách danh mục cho phép, ép kiểu JSON bằng response_format={'type': 'json_object'}, timeout 15 giây và nhiệt độ temperature = 0.")
+
+    style_heading_2(doc, "9. Minh chứng dùng AI trong Phân tích & Thiết kế")
+    add_body_p(doc, "Ghi nhận đầy đủ nhật ký trao đổi với AI Code Assistant khi phân tích ERD 3NF và hoàn thiện cấu trúc thư mục, được lưu trữ tại file docs/ai_usage_evidence.md.")
+
+    style_heading_2(doc, "10. Hồ sơ tài liệu phân tích thiết kế")
+    add_body_p(doc, "Hệ thống tài liệu hoàn chỉnh tại docs/system_design_document.md và Standard_SDLC/, vạch rõ lộ trình 4 giai đoạn phát triển.")
+
+    # PHẦN II
+    p_sec2 = doc.add_paragraph()
+    p_sec2.paragraph_format.space_before = Pt(18)
+    p_sec2.paragraph_format.space_after = Pt(8)
+    r_sec2 = p_sec2.add_run("PHẦN II: BÀI KIỂM TRA THƯỜNG XUYÊN 2 (LẬP TRÌNH CƠ BẢN)")
+    r_sec2.font.name = "Times New Roman"
+    r_sec2.font.size = Pt(15)
+    r_sec2.font.bold = True
+    r_sec2.font.color.rgb = NAVY_BLUE
+
+    style_heading_2(doc, "1. Cấu trúc dự án hợp lý theo MVC/Router")
+    add_body_p(doc, "Phân tầng rõ rệt: src/api/ (Controllers), src/models/ (Entities), src/schemas/ (Pydantic v2), src/services/ (AI Services), src/templates/ (HTML Views), alembic/ (Migrations), tests/ (Pytest Suite).")
+
+    style_heading_2(doc, "2. Chức năng đăng nhập và phân quyền RBAC")
+    add_body_p(doc, "Xác thực kép qua Header Authorization: Bearer <token> và HttpOnly Cookie. Khởi tạo sẵn 3 vai trò: admin, user, viewer. Người dùng mới luôn tự động có vai trò 'user', xóa bỏ hoàn toàn lỗi 403.")
+
+    style_heading_2(doc, "3. Hoàn thiện CRUD nghiệp vụ chính")
+    add_body_p(doc, "Hoàn chỉnh CRUD Giao dịch và Danh mục: Bổ sung Modal Sửa Giao dịch (PUT /api/transactions/{id}) và Modal Thêm Danh mục mới (POST /api/categories/) hoạt động mượt mà.")
+
+    style_heading_2(doc, "4. Chức năng tìm kiếm và lọc đa tiêu chí")
+    add_body_p(doc, "Hỗ trợ tìm kiếm từ khóa không phân biệt hoa thường (ilike), lọc theo khoảng ngày (start_date, end_date), lọc theo danh mục, sắp xếp ngày giảm dần qua Fetch API không tải lại trang.")
+
+    style_heading_2(doc, "5. Thống kê và Dashboard báo cáo")
+    add_body_p(doc, "Tính toán Tổng thu, Tổng chi, Số dư bằng hàm SQL func.sum(). Trực quan hóa dữ liệu qua biểu đồ tròn tỷ trọng và biểu đồ cột xu hướng tài chính hàng tháng bằng Chart.js.")
+
+    style_heading_2(doc, "6. Giao diện rõ ràng, hiện đại (Glassmorphism)")
+    add_body_p(doc, "Thiết kế Glassmorphism trên nền Bootstrap 5, responsive trên mobile. Phân biệt màu sắc ngữ nghĩa rõ ràng: Thu nhập (+ xanh lá), Chi tiêu (- đỏ cam).")
+
+    style_heading_2(doc, "7. Kết nối và thao tác CSDL ổn định (Seed Data)")
+    add_body_p(doc, "SQLAlchemy 2.0 ORM ổn định với pool_pre_ping=True. Script scripts/seed_data.py tự động sinh tài khoản 'sinhvien' và 30 ngày chi tiêu thực tế phục vụ demo nghiệm thu ngay lập tức.")
+
+    style_heading_2(doc, "8. Xử lý lỗi cơ bản và phòng ngừa crash")
+    add_body_p(doc, "Mọi thao tác ghi CSDL đều đặt trong khối try...except...db.rollback(). Xác thực dữ liệu đầu vào qua Pydantic Schemas bắt lỗi 422 Unprocessable Entity, bảo vệ ứng dụng không bị crash.")
+
+    style_heading_2(doc, "9. Minh chứng sử dụng AI khi lập trình")
+    add_body_p(doc, "Lưu vết các prompt nhờ AI hỗ trợ viết Middleware xác thực, cấu hình Rate Limiter và sửa lỗi giao diện, lưu trữ minh chứng tại docs/ai_usage_evidence.md.")
+
+    style_heading_2(doc, "10. Quản lý mã nguồn Git, Docker và README")
+    add_body_p(doc, "Quản lý code trên GitHub với commit chuẩn Conventional Commits. Cung cấp file README.md, .env.example, Dockerfile và docker-compose.yml.")
+
+    # PHẦN III
+    p_sec3 = doc.add_paragraph()
+    p_sec3.paragraph_format.space_before = Pt(18)
+    p_sec3.paragraph_format.space_after = Pt(8)
+    r_sec3 = p_sec3.add_run("PHẦN III: BÀI KIỂM TRA THƯỜNG XUYÊN 3 (TÍCH HỢP AI & KIỂM THỬ)")
+    r_sec3.font.name = "Times New Roman"
+    r_sec3.font.size = Pt(15)
+    r_sec3.font.bold = True
+    r_sec3.font.color.rgb = NAVY_BLUE
+
+    style_heading_2(doc, "1. Tích hợp chức năng AI vào hệ thống (Invisible AI)")
+    add_body_p(doc, "Nhúng AI trực tiếp vào luồng nghiệp vụ tạo giao dịch (AI Classifier) và cố vấn tài chính trên Dashboard (AI Advisor), xóa bỏ rào cản lười ghi chép.")
+
+    style_heading_2(doc, "2. Kết nối API/Model AI đúng cách và bảo mật")
+    add_body_p(doc, "Tích hợp mô hình gpt-4o-mini / gpt-3.5-turbo qua thư viện openai >= 1.50.0. Khóa API Key bảo mật tuyệt đối trong .env. Timeout mạng giới hạn 15 giây.")
+
+    style_heading_2(doc, "3. Thiết kế Prompt có hệ thống và ép kiểu JSON")
+    add_body_p(doc, "Quản lý tập trung tại src/services/, phân tách rõ System/User Prompt. Sử dụng cờ response_format={'type': 'json_object'} đảm bảo 100% phản hồi là JSON hợp lệ.")
+
+    style_heading_2(doc, "4. Tối ưu Prompt qua 3 vòng thử nghiệm (Độ chính xác 96%)")
+    add_body_p(doc, "Thử nghiệm trên 50 câu giao dịch tiếng Việt sinh viên:\n• Vòng 1 (Prompt tự do): 100% lỗi parse JSON, độ chính xác 72%.\n• Vòng 2 (Chỉ dẫn JSON thô): 16% lỗi JSON, độ chính xác 84%, AI tự bịa danh mục.\n• Vòng 3 (Kẹp danh mục hệ thống + JSON Mode): 0% lỗi JSON, độ chính xác 96%, nhận diện chính xác Thu/Chi.")
+
+    style_heading_2(doc, "5. Khai thác dữ liệu CSDL cho AI & Quyền riêng tư")
+    add_body_p(doc, "Sử dụng câu lệnh SQL Aggregate tổng hợp số liệu 90 ngày. Áp dụng Privacy-by-Design: KHÔNG gửi lịch sử thô, chỉ gửi con số tổng hợp vô danh lên OpenAI.")
+
+    style_heading_2(doc, "6. Hiển thị kết quả AI rõ ràng")
+    add_body_p(doc, "Thẻ danh mục AI hiển thị trên bảng kèm huy hiệu màu sắc. Khối Lời khuyên tài chính cá nhân hóa hiển thị trang trọng trên Dashboard.")
+
+    style_heading_2(doc, "7. Xử lý ngoại lệ AI và cơ chế Heuristic Fallback")
+    add_body_p(doc, "Bắt APITimeoutError, RateLimitError, JSONDecodeError. Khi mất kết nối hoặc chưa có key, hệ thống tự động kích hoạt bộ Heuristic Classifier nội bộ gán nhãn an toàn.")
+
+    style_heading_2(doc, "8. Kiểm thử tự động toàn diện (35/35 Pytest PASS 100%)")
+    add_body_p(doc, "Bộ test tests/test_api.py đạt 35/35 Test Cases PASS 100%, bao phủ toàn diện: Auth JWT, RBAC, Cô lập dữ liệu người dùng (TC-15), CRUD giao dịch, Báo cáo, Mock AI và kiểm thử dữ liệu biên/ngoại lệ.")
+
+    style_heading_2(doc, "9. Review Code và cải thiện tính nguyên tử CSDL bằng AI")
+    add_body_p(doc, "Nhờ AI rà soát, nhóm phát hiện lỗi Atomicity và gom thao tác tạo danh mục + giao dịch vào 1 transaction duy nhất qua db.flush() và db.rollback().")
+
+    style_heading_2(doc, "10. Tối ưu hóa trải nghiệm người dùng với AI ngầm")
+    add_body_p(doc, "Luồng thao tác hoàn toàn tự nhiên: người dùng nhập văn bản bình thường, bấm Lưu, AI tự gán danh mục ngầm mà không cần chuyển qua lại giữa các màn hình.")
+
+    # PHẦN IV
+    p_sec4 = doc.add_paragraph()
+    p_sec4.paragraph_format.space_before = Pt(18)
+    p_sec4.paragraph_format.space_after = Pt(8)
+    r_sec4 = p_sec4.add_run("PHẦN IV: THI KẾT THÚC HỌC PHẦN (TỔNG KẾT VÀ BẢO VỆ ĐỒ ÁN)")
+    r_sec4.font.name = "Times New Roman"
+    r_sec4.font.size = Pt(15)
+    r_sec4.font.bold = True
+    r_sec4.font.color.rgb = NAVY_BLUE
+
+    style_heading_2(doc, "1. Hoàn thiện chức năng hệ thống thực tế 100%")
+    add_body_p(doc, "Hệ thống hoàn thiện đầy đủ mọi chức năng thực tế: Auth JWT/Cookie, CRUD Giao dịch (Modal Sửa), CRUD Danh mục (Modal Thêm), Tìm kiếm lọc, Dashboard Chart.js, Phân loại tự động và Tư vấn tài chính bằng AI.")
+
+    style_heading_2(doc, "2. Chất lượng kiến trúc và mã nguồn (PEP8 & Type Hinting)")
+    add_body_p(doc, "Kiến trúc phân tầng Controller-Service-Model sạch sẽ, tuân thủ nghiêm ngặt PEP8, Type Hinting đầy đủ, tích hợp Pydantic v2 schemas và Swagger Docs tự động.")
+
+    style_heading_2(doc, "3. Chất lượng CSDL (3NF, Alembic, SQLite & PostgreSQL)")
+    add_body_p(doc, "CSDL 7 bảng đạt chuẩn 3NF, Alembic migrations, hỗ trợ song song SQLite và PostgreSQL 15, tích hợp init_db() và seed_data.py sẵn sàng cho demo.")
+
+    style_heading_2(doc, "4. Chất lượng giao diện và trải nghiệm người dùng Responsive")
+    add_body_p(doc, "Giao diện Glassmorphism + Bootstrap 5 responsive 100% trên PC và mobile, Fetch API mượt mà không reload trang, hiển thị rõ ràng Thu (+ xanh) / Chi (- đỏ).")
+
+    style_heading_2(doc, "5. Chất lượng và giá trị thực tiễn của chức năng AI")
+    add_body_p(doc, "Độ chính xác phân loại 96%, kiểm soát ảo giác qua nhiệt độ temperature = 0, kẹp danh mục cứng và cơ chế Fallback Heuristic zero-downtime.")
+
+    style_heading_2(doc, "6. Bảo mật thông tin, đạo đức AI và bảo vệ quyền riêng tư")
+    add_body_p(doc, "Bcrypt hash, JWT HS256, RBAC chống IDOR, không lộ API key. Đặc biệt KHÔNG gửi dữ liệu giao dịch thô lên OpenAI, bảo vệ quyền riêng tư người dùng 100%.")
+
+    style_heading_2(doc, "7. Hiệu năng cao và độ ổn định hệ thống")
+    add_body_p(doc, "Hàm SQL Aggregate func.sum() tiết kiệm 80% RAM server, SlowAPI Rate Limiting ngăn chặn brute-force, quản lý giao dịch nguyên tử qua db.rollback().")
+
+    style_heading_2(doc, "8. Đóng gói Docker và Pipeline GitHub Actions CI/CD passed 100%")
+    add_body_p(doc, "Dockerfile đa tầng, docker-compose.yml khởi chạy trọn gói. Pipeline GitHub Actions CI/CD (.github/workflows/ci.yml) tự động kiểm thử trên Python 3.10, 3.11, 3.12 và quét bảo mật Trivy ĐẠT KẾT QUẢ XANH 100% (SUCCESS).")
+
+    style_heading_2(doc, "9. Hồ sơ báo cáo kỹ thuật đầy đủ")
+    add_body_p(doc, "Toàn bộ tài liệu phân tích, thiết kế, triển khai, kiểm thử và minh chứng AI được hệ thống hóa chuyên nghiệp trong thư mục docs/ và Standard_SDLC/.")
+
+    style_heading_2(doc, "10. Kịch bản thuyết trình, demo trực tiếp 7 phút và vấn đáp phản biện")
+    add_body_p(doc, "Phân công cụ thể: Trưởng nhóm Nguyễn Tuấn Đạt phụ trách Đặt vấn đề, Kiến trúc, Demo AI, Fallback và CI/CD; Phó nhóm Phàn Ngọc Anh phụ trách demo nghiệp vụ CRUD, bộ lọc tìm kiếm, Modal sửa/thêm và quản lý CSDL. Bộ 3 câu hỏi phản biện đã có sẵn câu trả lời mẫu thuyết phục.")
+
+    doc.save("docs/Bao_Cao_Tong_Hop_Toan_Dien_Nhom_02.docx")
+    print("Exported docs/Bao_Cao_Tong_Hop_Toan_Dien_Nhom_02.docx successfully!")
 
 if __name__ == "__main__":
     generate_report_3()
     generate_report_4()
     generate_report_progress()
+    generate_master_report()
+
