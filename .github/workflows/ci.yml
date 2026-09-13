@@ -10,6 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
     services:
@@ -28,10 +29,10 @@ jobs:
           --health-retries 5
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         
@@ -42,16 +43,21 @@ jobs:
         
     - name: Run tests with coverage
       env:
-        DATABASE_URL: postgresql://testuser:testpass@localhost/expenseai_test
-        SECRET_KEY: testsecretkey
+        DATABASE_URL: postgresql://testuser:testpass@localhost:5432/expenseai_test
+        SECRET_KEY: testsecretkey_ci_github_actions_expenseai
         ALGORITHM: HS256
+        ENVIRONMENT: development
       run: |
         pytest tests/
         
   security:
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
@@ -62,7 +68,8 @@ jobs:
         output: 'trivy-results.sarif'
         
     - name: Upload Trivy results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
+      continue-on-error: true
       with:
         sarif_file: 'trivy-results.sarif'
 
@@ -71,8 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Deploy to Production
       run: |
         echo "Deploying to production server..."
-        # Add your deployment script here

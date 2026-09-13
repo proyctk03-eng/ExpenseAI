@@ -61,6 +61,29 @@ def seed_default_rbac(db: Session) -> None:
         r.permissions = [perm_map[p_name] for p_name in r_data["perms"] if p_name in perm_map]
     db.commit()
 
+def seed_default_categories(db: Session) -> None:
+    from src.models import Category
+    default_categories = [
+        {"name": "Lương", "type": "income"},
+        {"name": "Thưởng", "type": "income"},
+        {"name": "Thu nhập khác", "type": "income"},
+        {"name": "Ăn uống", "type": "expense"},
+        {"name": "Di chuyển", "type": "expense"},
+        {"name": "Học tập", "type": "expense"},
+        {"name": "Giải trí", "type": "expense"},
+        {"name": "Sinh hoạt", "type": "expense"},
+        {"name": "Mua sắm", "type": "expense"},
+        {"name": "Khác", "type": "expense"},
+    ]
+    for cat in default_categories:
+        exists = db.query(Category).filter(
+            Category.user_id.is_(None),
+            Category.name == cat["name"]
+        ).first()
+        if not exists:
+            db.add(Category(name=cat["name"], type=cat["type"], user_id=None))
+    db.commit()
+
 def init_db() -> None:
     from src.models import User, Category, Transaction, AIPrediction  # noqa: F401
     from src.models.rbac import Role, Permission, UserRole, RolePermission  # noqa: F401
@@ -68,6 +91,8 @@ def init_db() -> None:
     with SessionLocal() as db:
         try:
             seed_default_rbac(db)
+            seed_default_categories(db)
         except Exception:
             db.rollback()
+
 

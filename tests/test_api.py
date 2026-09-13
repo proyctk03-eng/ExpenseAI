@@ -9,6 +9,11 @@ from fastapi.testclient import TestClient
 from src.main import app
 from src.utils.limiter import limiter
 
+from src.database import init_db
+
+# Khởi tạo schema và dữ liệu mặc định cho DB test
+init_db()
+
 # Vô hiệu hóa rate limit khi chạy kiểm thử
 limiter.enabled = False
 
