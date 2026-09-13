@@ -14,14 +14,33 @@ class AIAdviceService:
     """Gọi OpenAI API để sinh lời khuyên tài chính."""
 
     def __init__(self):
-        self.client = OpenAI(
-            api_key=OPENAI_API_KEY,
-            http_client=httpx.Client(timeout=15.0),
-            max_retries=2,
-        )
+        self.is_available = bool(OPENAI_API_KEY and OPENAI_API_KEY != "mock-api-key-for-testing")
+        if self.is_available:
+            try:
+                self.client = OpenAI(
+                    api_key=OPENAI_API_KEY,
+                    http_client=httpx.Client(timeout=15.0),
+                    max_retries=2,
+                )
+            except Exception as e:
+                logger.warning("Không thể khởi tạo OpenAI trong AIAdviceService: %s", e)
+                self.is_available = False
+                self.client = None
+        else:
+            self.client = None
 
     def get_advice(self, summary_data: dict) -> str:
         """Phân tích dữ liệu chi tiêu và đưa ra lời khuyên."""
+        if not self.is_available or not self.client:
+            expense_total = sum(summary_data.get("expense", {}).values())
+            income_total = sum(summary_data.get("income", {}).values())
+            balance = income_total - expense_total
+            if balance > 0:
+                return f"Bạn đang kiểm soát tài chính tốt với số dư tích lũy +{balance:,.0f} ₫. Hãy trích tối thiểu 20% vào quỹ tiết kiệm khẩn cấp!"
+            elif balance < 0:
+                return f"Cảnh báo: Bạn đang chi vượt thu {-balance:,.0f} ₫. Hãy rà soát lại các danh mục chi tiêu lớn như Ăn uống và Giải trí để cân đối ngân sách."
+            else:
+                return "Chi tiêu của bạn đang ở mức vừa đủ so với thu nhập. Hãy cân nhắc lập kế hoạch ngân sách cụ thể cho các tháng tới."
         prompt = (
             "Bạn là chuyên gia tư vấn tài chính. Dựa trên dữ liệu tổng hợp 3 tháng qua, "
             "hãy đưa ra lời khuyên tài chính cá nhân ngắn gọn (dưới 200 chữ), thực tế."

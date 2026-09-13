@@ -7,6 +7,10 @@ import pytest
 import time
 from fastapi.testclient import TestClient
 from src.main import app
+from src.utils.limiter import limiter
+
+# Vô hiệu hóa rate limit khi chạy kiểm thử
+limiter.enabled = False
 
 client = TestClient(app)
 
@@ -33,6 +37,7 @@ def create_test_user():
     assert res_login.status_code == 200, f"Login failed: {res_login.text}"
 
     token = res_login.json()["access_token"]
+    client.cookies.clear()
     return {"Authorization": f"Bearer {token}"}, username
 
 
@@ -163,11 +168,13 @@ class TestSecurity:
 
     def test_access_without_token(self):
         """TC-13: Truy cập API bảo vệ không có token phải bị 401/403."""
+        client.cookies.clear()
         res = client.get("/api/transactions/")
         assert res.status_code in [401, 403]
 
     def test_access_with_invalid_token(self):
         """TC-14: Truy cập API bảo vệ với token giả phải bị từ chối."""
+        client.cookies.clear()
         res = client.get("/api/transactions/", headers={
             "Authorization": "Bearer fake.token.here"
         })
@@ -312,11 +319,11 @@ class TestAIAdvice:
         """TC-25: Endpoint AI advice phải trả về response (dù có hoặc không có dữ liệu)."""
         headers, _ = create_test_user()
         res = client.post("/api/advice/", headers=headers)
-        # Chấp nhận 200 (có lời khuyên) hoặc 4xx (chưa đủ dữ liệu)
-        assert res.status_code in [200, 400, 422, 500]
+        assert res.status_code in [200, 400, 422]
 
     def test_ai_advice_without_auth(self):
         """TC-26: AI advice không có token phải bị từ chối."""
+        client.cookies.clear()
         res = client.post("/api/advice/")
         assert res.status_code in [401, 403]
 
@@ -378,7 +385,7 @@ class TestErrorHandling:
             "transaction_date": "2026-08-15"
         }, headers=headers)
         # Amount 0 nên bị từ chối (constraint amount > 0)
-        assert res.status_code in [400, 422, 500]
+        assert res.status_code in [400, 422]
 
     def test_very_long_description(self):
         """TC-34: Mô tả rất dài phải được xử lý (không crash server)."""

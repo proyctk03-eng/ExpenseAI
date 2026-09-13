@@ -35,3 +35,12 @@ class Transaction(Base):
     user: Mapped["User"] = relationship(back_populates="transactions")
     category: Mapped[Optional["Category"]] = relationship(back_populates="transactions")
     ai_prediction: Mapped[Optional["AIPrediction"]] = relationship(back_populates="transaction", cascade="all, delete-orphan")
+
+    @property
+    def category_name(self) -> Optional[str]:
+        return self.category.name if self.category else "Chưa phân loại"
+
+    @property
+    def category_type(self) -> str:
+        return self.category.type if self.category else "expense"
+

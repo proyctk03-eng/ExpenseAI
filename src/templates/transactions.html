@@ -99,11 +99,11 @@ async function loadTransactions() {
                 noTxMsg.classList.add('d-none');
                 data.forEach(tx => {
                     txCounter++;
-                    const isExpense = tx.amount > 0;
+                    const isExpense = tx.category_type ? (tx.category_type === 'expense') : true;
                     const badgeClass = isExpense ? 'badge-expense' : 'badge-income';
                     const sign = isExpense ? '-' : '+';
                     const amountText = Math.abs(tx.amount).toLocaleString('vi-VN') + ' ₫';
-                    const catName = tx.category_name || tx.category || 'Chưa phân loại';
+                    const catName = tx.category_name || 'Chưa phân loại';
 
                     tbody.innerHTML += `
                         <tr>
@@ -142,17 +142,198 @@ async function loadTransactions() {
 
 async function deleteTx(id) {
     if (confirm('Bạn có chắc muốn xóa giao dịch này?')) {
-        await fetch(`/api/transactions/${id}`, {
+        const res = await fetch(`/api/transactions/${id}`, {
             method: 'DELETE'
         });
-        loadTransactions();
+        if (res.ok) {
+            showToast('Đã xóa giao dịch!', 'success');
+            loadTransactions();
+        } else {
+            showToast('Lỗi khi xóa giao dịch', 'danger');
+        }
     }
 }
 
-function editTx(id) {
-    showToast('Tính năng sửa giao dịch đang được phát triển.', 'info');
+let editModal;
+let currentTransactions = [];
+
+async function editTx(id) {
+    const tx = currentTransactions.find(t => t.id === id);
+    if (!tx) {
+        showToast('Không tìm thấy giao dịch', 'warning');
+        return;
+    }
+    document.getElementById('editTxId').value = tx.id;
+    document.getElementById('editTxDate').value = tx.transaction_date;
+    document.getElementById('editTxAmount').value = tx.amount;
+    document.getElementById('editTxDesc').value = tx.description;
+    
+    // Load categories into edit select
+    const catSelect = document.getElementById('editTxCategory');
+    catSelect.innerHTML = '<option value="">(Giữ nguyên danh mục)</option>';
+    try {
+        const catRes = await fetch('/api/categories/');
+        if (catRes.ok) {
+            const categories = await catRes.json();
+            categories.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = `${c.name} (${c.type === 'income' ? 'Thu' : 'Chi'})`;
+                if (c.id === tx.category_id) opt.selected = true;
+                catSelect.appendChild(opt);
+            });
+        }
+    } catch(e) {}
+
+    if (!editModal) {
+        editModal = new bootstrap.Modal(document.getElementById('editModal'));
+    }
+    editModal.show();
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const editForm = document.getElementById('editTxForm');
+    if (editForm) {
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editTxId').value;
+            const amount = parseFloat(document.getElementById('editTxAmount').value);
+            const description = document.getElementById('editTxDesc').value;
+            const transaction_date = document.getElementById('editTxDate').value;
+            const catVal = document.getElementById('editTxCategory').value;
+            const category_id = catVal ? parseInt(catVal) : undefined;
+
+            try {
+                const res = await fetch(`/api/transactions/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount, description, transaction_date, category_id })
+                });
+                if (res.ok) {
+                    showToast('Cập nhật giao dịch thành công!', 'success');
+                    editModal.hide();
+                    loadTransactions();
+                } else {
+                    const err = await res.json();
+                    showToast(err.detail || 'Lỗi cập nhật', 'danger');
+                }
+            } catch(e) {
+                showToast('Lỗi kết nối khi cập nhật', 'danger');
+            }
+        });
+    }
+});
+
+// Cache loaded transactions for editing
+const origLoadTransactions = loadTransactions;
+loadTransactions = async function() {
+    const search = document.getElementById('searchKeyword')?.value || '';
+    const start_date = document.getElementById('startDate')?.value || '';
+    const end_date = document.getElementById('endDate')?.value || '';
+
+    let url = '/api/transactions/?';
+    if (search) url += `search=${encodeURIComponent(search)}&`;
+    if (start_date) url += `start_date=${start_date}&`;
+    if (end_date) url += `end_date=${end_date}&`;
+
+    try {
+        const res = await fetch(url);
+        if (res.ok) {
+            currentTransactions = await res.json();
+            const tbody = document.getElementById('txTableBody');
+            const noTxMsg = document.getElementById('noTxMsg');
+
+            tbody.innerHTML = '';
+            txCounter = 0;
+
+            if (currentTransactions.length === 0) {
+                noTxMsg.classList.remove('d-none');
+            } else {
+                noTxMsg.classList.add('d-none');
+                currentTransactions.forEach(tx => {
+                    txCounter++;
+                    const isExpense = tx.category_type ? (tx.category_type === 'expense') : true;
+                    const badgeClass = isExpense ? 'badge-expense' : 'badge-income';
+                    const sign = isExpense ? '-' : '+';
+                    const amountText = Math.abs(tx.amount).toLocaleString('vi-VN') + ' ₫';
+                    const catName = tx.category_name || 'Chưa phân loại';
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="text-muted fw-medium">${txCounter}</td>
+                            <td>
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">
+                                    <i class="fa-regular fa-calendar me-1"></i>${tx.transaction_date}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge badge-category rounded-pill px-3 py-1">${escapeHtml(catName)}</span>
+                            </td>
+                            <td class="fw-medium" style="color: var(--text-dark);">${escapeHtml(tx.description)}</td>
+                            <td>
+                                <span class="badge ${badgeClass} rounded-pill px-3 py-2" style="font-size: 0.85rem;">
+                                    ${sign}${amountText}
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <button class="btn-action btn-action--edit" onclick="editTx(${tx.id})" title="Sửa">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button class="btn-action btn-action--delete" onclick="deleteTx(${tx.id})" title="Xóa">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+    } catch (e) {
+        showToast('Lỗi tải danh sách', 'danger');
+    }
+};
 
 loadTransactions();
 </script>
+
+<!-- Edit Transaction Modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-light);">
+                <h5 class="modal-title fw-bold" style="color: var(--text-dark);">
+                    <i class="fa-solid fa-pen-to-square me-2" style="color: var(--accent-blue);"></i>Chỉnh sửa Giao dịch
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="editTxForm">
+                    <input type="hidden" id="editTxId">
+                    <div class="mb-3">
+                        <label class="form-label">Ngày giao dịch</label>
+                        <input type="date" id="editTxDate" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Số tiền (VNĐ)</label>
+                        <div class="input-group">
+                            <input type="number" id="editTxAmount" class="form-control" min="1" step="any" required>
+                            <span class="input-group-text">₫</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Danh mục</label>
+                        <select id="editTxCategory" class="form-select"></select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Mô tả</label>
+                        <input type="text" id="editTxDesc" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-glass w-100">
+                        <i class="fa-solid fa-check me-1"></i> Lưu thay đổi
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

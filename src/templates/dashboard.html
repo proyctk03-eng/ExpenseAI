@@ -201,7 +201,7 @@ async function loadDashboard() {
                 noMsg.style.display = 'none';
                 let html = '';
                 recent.forEach(tx => {
-                    const isExpense = tx.amount > 0;
+                    const isExpense = tx.category_type ? (tx.category_type === 'expense') : true;
                     const iconClass = isExpense ? 'recent-tx__icon--expense' : 'recent-tx__icon--income';
                     const iconFA = isExpense ? 'fa-arrow-up' : 'fa-arrow-down';
                     const amtClass = isExpense ? 'recent-tx__amount--expense' : 'recent-tx__amount--income';

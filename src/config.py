@@ -8,10 +8,10 @@ from dotenv import load_dotenv
 # Tìm và nạp các biến môi trường từ file .env vào os.environ
 load_dotenv()
 
-# --- Các biến môi trường bắt buộc ---
-DATABASE_URL = os.getenv("DATABASE_URL")
-SECRET_KEY = os.getenv("SECRET_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# --- Các biến môi trường bắt buộc (hoặc có fallback trong dev) ---
+DATABASE_URL = os.getenv("DATABASE_URL") or "sqlite:///./expense_db.sqlite"
+SECRET_KEY = os.getenv("SECRET_KEY") or "expenseai_dev_secret_key_change_in_prod_9999"
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 # --- Các biến môi trường có giá trị mặc định ---
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
@@ -20,15 +20,17 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
 # Môi trường chạy app: 'development' hoặc 'production'
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
-# --- Kiểm tra tính hợp lệ của cấu hình lúc khởi động ---
-missing_keys = []
-if not DATABASE_URL:
-    missing_keys.append("DATABASE_URL")
-if not SECRET_KEY:
-    missing_keys.append("SECRET_KEY")
-if not OPENAI_API_KEY:
-    missing_keys.append("OPENAI_API_KEY")
+# --- Kiểm tra tính hợp lệ của cấu hình lúc khởi động trong production ---
+if ENVIRONMENT == "production":
+    missing_keys = []
+    if not os.getenv("DATABASE_URL"):
+        missing_keys.append("DATABASE_URL")
+    if not os.getenv("SECRET_KEY"):
+        missing_keys.append("SECRET_KEY")
+    if not os.getenv("OPENAI_API_KEY"):
+        missing_keys.append("OPENAI_API_KEY")
 
-if missing_keys:
-    error_msg = f"LỖI KHỞI ĐỘNG: Thiếu các cấu hình biến môi trường sau: {', '.join(missing_keys)}"
-    raise ValueError(error_msg)
+    if missing_keys:
+        error_msg = f"LỖI KHỞI ĐỘNG (Production): Thiếu các cấu hình biến môi trường sau: {', '.join(missing_keys)}"
+        raise ValueError(error_msg)
+

@@ -59,7 +59,7 @@
                 <h5 style="font-weight: 700; color: var(--text-dark); margin: 0;">
                     <i class="fa-solid fa-tags me-2" style="color: var(--accent-blue);"></i>Quản lý danh mục
                 </h5>
-                <button class="btn btn-glass btn-sm" onclick="alert('Tính năng thêm danh mục đang hoàn thiện.')">
+                <button class="btn btn-glass btn-sm" onclick="openAddCategoryModal()">
                     <i class="fa-solid fa-plus me-1"></i> Thêm mới
                 </button>
             </div>
@@ -142,6 +142,7 @@ async function deleteCategory(id) {
 // Cập nhật thông tin
 document.getElementById('infoForm').addEventListener('submit', async(e) => {
     e.preventDefault();
+    const msg = document.getElementById('infoMsg');
     const username = document.getElementById('settingUsername').value;
     const email = document.getElementById('settingEmail').value;
     
@@ -151,7 +152,11 @@ document.getElementById('infoForm').addEventListener('submit', async(e) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, email })
         });
+        const data = await res.json();
         if (res.ok) {
+            msg.className = 'alert alert-success';
+            msg.textContent = 'Cập nhật thông tin thành công!';
+        } else {
             msg.className = 'alert alert-danger';
             msg.textContent = data.detail || 'Lỗi cập nhật';
         }
@@ -162,6 +167,44 @@ document.getElementById('infoForm').addEventListener('submit', async(e) => {
         msg.classList.remove('d-none');
     }
 });
+
+let catModal;
+function openAddCategoryModal() {
+    if (!catModal) {
+        catModal = new bootstrap.Modal(document.getElementById('addCatModal'));
+    }
+    document.getElementById('addCatForm').reset();
+    catModal.show();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const addCatForm = document.getElementById('addCatForm');
+    if (addCatForm) {
+        addCatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('catName').value.trim();
+            const type = document.getElementById('catType').value;
+            try {
+                const res = await fetch('/api/categories/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, type })
+                });
+                if (res.ok) {
+                    showToast('Đã thêm danh mục mới!', 'success');
+                    catModal.hide();
+                    loadSettings();
+                } else {
+                    const err = await res.json();
+                    showToast(err.detail || 'Lỗi thêm danh mục', 'danger');
+                }
+            } catch(e) {
+                showToast('Lỗi kết nối khi tạo danh mục', 'danger');
+            }
+        });
+    }
+});
+
 
 // Đổi mật khẩu
 document.getElementById('pwdForm').addEventListener('submit', async(e) => {
@@ -203,4 +246,36 @@ document.getElementById('pwdForm').addEventListener('submit', async(e) => {
 
 loadSettings();
 </script>
+
+<!-- Add Category Modal -->
+<div class="modal fade" id="addCatModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-light);">
+                <h5 class="modal-title fw-bold" style="color: var(--text-dark);">
+                    <i class="fa-solid fa-plus-circle me-2" style="color: var(--accent-blue);"></i>Thêm Danh mục mới
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="addCatForm">
+                    <div class="mb-3">
+                        <label class="form-label">Tên danh mục</label>
+                        <input type="text" id="catName" class="form-control" placeholder="VD: Thưởng dự án, Tiền điện..." required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Loại danh mục</label>
+                        <select id="catType" class="form-select" required>
+                            <option value="expense">Chi tiêu (Expense)</option>
+                            <option value="income">Thu nhập (Income)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-glass w-100">
+                        <i class="fa-solid fa-check me-1"></i> Lưu danh mục
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

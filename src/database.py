@@ -21,6 +21,53 @@ def get_db() -> Generator[Session, None, None]:
     finally:
         db.close()
 
+def seed_default_rbac(db: Session) -> None:
+    from src.models.rbac import Role, Permission
+    permissions_data = [
+        {"name": "*:*", "resource": "all", "action": "all"},
+        {"name": "transaction:create", "resource": "transaction", "action": "create"},
+        {"name": "transaction:read", "resource": "transaction", "action": "read"},
+        {"name": "transaction:update", "resource": "transaction", "action": "update"},
+        {"name": "transaction:delete", "resource": "transaction", "action": "delete"},
+        {"name": "category:create", "resource": "category", "action": "create"},
+        {"name": "category:read", "resource": "category", "action": "read"},
+        {"name": "category:update", "resource": "category", "action": "update"},
+        {"name": "category:delete", "resource": "category", "action": "delete"},
+        {"name": "report:read", "resource": "report", "action": "read"}
+    ]
+    perm_map = {}
+    for p_data in permissions_data:
+        p = db.query(Permission).filter(Permission.name == p_data["name"]).first()
+        if not p:
+            p = Permission(**p_data)
+            db.add(p)
+            db.flush()
+        perm_map[p_data["name"]] = p
+
+    roles_data = [
+        {"name": "admin", "description": "Toàn quyền hệ thống", "perms": ["*:*"]},
+        {"name": "user", "description": "Người dùng cơ bản", "perms": [
+            "transaction:create", "transaction:read", "transaction:update", "transaction:delete",
+            "category:create", "category:read", "category:update", "category:delete", "report:read"
+        ]},
+        {"name": "viewer", "description": "Chỉ xem", "perms": ["transaction:read", "category:read", "report:read"]}
+    ]
+    for r_data in roles_data:
+        r = db.query(Role).filter(Role.name == r_data["name"]).first()
+        if not r:
+            r = Role(name=r_data["name"], description=r_data["description"])
+            db.add(r)
+            db.flush()
+        r.permissions = [perm_map[p_name] for p_name in r_data["perms"] if p_name in perm_map]
+    db.commit()
+
 def init_db() -> None:
     from src.models import User, Category, Transaction, AIPrediction  # noqa: F401
+    from src.models.rbac import Role, Permission, UserRole, RolePermission  # noqa: F401
     Base.metadata.create_all(bind=engine)
+    with SessionLocal() as db:
+        try:
+            seed_default_rbac(db)
+        except Exception:
+            db.rollback()
+

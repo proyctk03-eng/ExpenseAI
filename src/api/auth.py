@@ -24,7 +24,7 @@ def _user_to_response(user: User) -> dict:
         "username": user.username,
         "email": user.email,
         "roles": [r.name for r in user.roles],
-        "created_at": user.created_at,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
     }
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -35,14 +35,17 @@ def register(request: Request, user_in: UserCreate, db: Session = Depends(get_db
     if db.query(User).filter(User.email == user_in.email).first():
         raise HTTPException(status_code=400, detail="Email đã tồn tại")
     default_role = db.query(Role).filter(Role.name == "user").first()
+    if not default_role:
+        default_role = Role(name="user", description="Người dùng cơ bản")
+        db.add(default_role)
+        db.flush()
     
     new_user = User(
         username=user_in.username,
         email=user_in.email,
         hashed_password=get_password_hash(user_in.password),
     )
-    if default_role:
-        new_user.roles.append(default_role)
+    new_user.roles.append(default_role)
         
     db.add(new_user)
     db.commit()
@@ -56,7 +59,7 @@ def login(request: Request, user_in: UserLogin, response: Response, db: Session 
     if not user or not verify_password(user_in.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sai username hoặc mật khẩu")
     
-    access_token_expires = timedelta(minutes=15)
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(user.id)}, expires_delta=access_token_expires
     )
@@ -65,14 +68,25 @@ def login(request: Request, user_in: UserLogin, response: Response, db: Session 
         data={"sub": str(user.id)}, expires_delta=refresh_token_expires
     )
 
-    resp = JSONResponse(content={"message": "Đăng nhập thành công"})
-    resp.set_cookie(key="access_token", value=access_token, httponly=True, max_age=15*60, samesite="Lax")
+    resp = JSONResponse(content={
+        "message": "Đăng nhập thành công",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "refresh_token": refresh_token,
+        "user": _user_to_response(user)
+    })
+    resp.set_cookie(key="access_token", value=access_token, httponly=True, max_age=ACCESS_TOKEN_EXPIRE_MINUTES*60, samesite="Lax")
     resp.set_cookie(key="refresh_token", value=refresh_token, httponly=True, max_age=7*24*60*60, samesite="Lax")
     return resp
 
 @router.post("/refresh")
 def refresh_token(request: Request, db: Session = Depends(get_db)):
     refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        # Also check authorization header or body if needed
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            refresh_token = auth_header.split(" ", 1)[1].strip()
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Phiên đăng nhập đã hết hạn",
@@ -93,13 +107,17 @@ def refresh_token(request: Request, db: Session = Depends(get_db)):
     if user is None:
         raise credentials_exception
 
-    access_token_expires = timedelta(minutes=15)
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(user.id)}, expires_delta=access_token_expires
     )
 
-    resp = JSONResponse(content={"message": "Refresh token thành công"})
-    resp.set_cookie(key="access_token", value=access_token, httponly=True, max_age=15*60, samesite="Lax")
+    resp = JSONResponse(content={
+        "message": "Refresh token thành công",
+        "access_token": access_token,
+        "token_type": "bearer"
+    })
+    resp.set_cookie(key="access_token", value=access_token, httponly=True, max_age=ACCESS_TOKEN_EXPIRE_MINUTES*60, samesite="Lax")
     return resp
 
 @router.post("/logout")

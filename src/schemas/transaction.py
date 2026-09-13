@@ -17,9 +17,12 @@ class TransactionUpdate(BaseModel):
 class TransactionResponse(BaseModel):
     id: int
     user_id: int
-    category_id: Optional[int]
+    category_id: Optional[int] = None
+    category_name: Optional[str] = None
+    category_type: Optional[str] = None
     amount: float
     description: str
     transaction_date: date
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+

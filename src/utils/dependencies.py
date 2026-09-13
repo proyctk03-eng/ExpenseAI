@@ -18,12 +18,22 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
-    """Giải mã JWT token từ cookie và trả về User hiện tại."""
+    """Giải mã JWT token từ Header Authorization hoặc Cookie và trả về User hiện tại."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Không thể xác thực chứng chỉ",
     )
-    token = request.cookies.get("access_token")
+    
+    token = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header:
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+        else:
+            raise credentials_exception
+    else:
+        token = request.cookies.get("access_token")
+
     if not token:
         raise credentials_exception
     try:

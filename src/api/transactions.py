@@ -60,14 +60,15 @@ def create_transaction(
         if not category_id:
             result = ai_classifier.classify(tx_in.description)
             pred_cat_name = result["category"]
+            pred_type = result.get("type", "expense")
 
             category = db.query(Category).filter(
-                (Category.user_id == current_user.id) | (Category.user_id == None),
+                (Category.user_id == current_user.id) | (Category.user_id.is_(None)),
                 Category.name == pred_cat_name
             ).first()
 
             if not category:
-                category = Category(name=pred_cat_name, type="expense", user_id=current_user.id)
+                category = Category(name=pred_cat_name, type=pred_type, user_id=current_user.id)
                 db.add(category)
                 db.flush()
 
