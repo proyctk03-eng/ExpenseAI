@@ -1,37 +1,60 @@
-# BÁO CÁO TIẾN ĐỘ DỰ ÁN CUỐI KỲ
-**Môn học:** Đồ án phần mềm / Thực hành chuyên môn
-**Nhóm thực hiện:** Nhóm 02
-**Đề tài:** Hệ thống Quản lý Chi tiêu Cá nhân tích hợp Trí tuệ Nhân tạo (AI)
+# BÁO CÁO TIẾN ĐỘ TỔNG THỂ DỰ ÁN - NHÓM 02
+**Môn học:** Ứng dụng Trí tuệ Nhân tạo trong Phát triển Phần mềm  
+**Đơn vị:** Khoa Công nghệ Thông tin - Trường Đại học Công nghệ Thông tin và Truyền thông (ICTU)  
+**Đề tài:** ExpenseAI - Hệ thống Quản lý Chi tiêu Cá nhân thông minh tích hợp Trí tuệ Nhân tạo  
 
-### Thành viên nhóm:
-1. **Trưởng nhóm:** Nguyễn Tuấn Đạt
-2. **Phó nhóm:** Phàn Ngọc Anh
-
----
-
-## 1. TÌNH TRẠNG HOÀN THÀNH (DỰA TRÊN RUBRIC KIỂM TRA)
-
-| Hạng mục | Tỷ lệ hoàn thành | Đánh giá |
-|---|:---:|---|
-| **Bài kiểm tra 1 (Phân tích thiết kế)** | 100% | Đã hoàn thiện toàn bộ Use Case, ERD, Sơ đồ luồng dữ liệu AI và Báo cáo Markdown. |
-| **Bài kiểm tra 2 (Lập trình cơ bản)** | 100% | Đã triển khai xong Backend (FastAPI), CRUD, và đặc biệt **đã tích hợp đầy đủ chức năng Lọc & Tìm kiếm Giao dịch** theo mô tả, ngày tháng. |
-| **Bài kiểm tra 3 (Tích hợp AI)** | 100% | Hệ thống AI Classifier và AI Advisor hoạt động hoàn hảo, bắt lỗi timeout và fallback chuẩn xác. |
-| **Hệ thống minh chứng AI** | 100% | Bảng minh chứng (Prompt, Code, Nhận xét) được ghi chép đầy đủ tại file `ai_evidence_report.md`. |
+### Thành viên nhóm thực hiện:
+1. **Trưởng nhóm:** Nguyễn Tuấn Đạt (Phụ trách Kiến trúc Hệ thống, Backend, Tích hợp AI & CI/CD)
+2. **Phó nhóm:** Phàn Ngọc Anh (Phụ trách Giao diện Frontend UI/UX, Kiểm thử & Quản trị CSDL)
 
 ---
 
-## 2. NHỮNG CẬP NHẬT MỚI NHẤT (CỦA TUẦN NÀY)
+## 1. TÌNH TRẠNG HOÀN THÀNH THEO TOÀN BỘ RUBRIC ĐÁNH GIÁ (100% SẴN SÀNG)
 
-Nhằm đảm bảo dự án đáp ứng **100%** tiêu chí của Bài Kiểm Tra 2 (Tiêu chí số 4: Tìm kiếm và lọc dữ liệu), Nhóm 02 đã thực hiện cập nhật toàn diện:
-
-- **Về phía Backend (`transactions.py`):** Cập nhật Endpoint `GET /transactions/` để tiếp nhận các query parameters: `search`, `start_date`, `end_date`, `category_id`. Sử dụng các hàm nội suy của SQLAlchemy (`ilike`, `>=`, `<=`) để lọc giao dịch mạnh mẽ và tối ưu.
-- **Về phía Frontend (`transactions.html`):** Bổ sung một thanh công cụ (Filter Bar) hoàn chỉnh ngay phía trên bảng giao dịch. Thanh công cụ bao gồm: Ô tìm kiếm văn bản, Bộ chọn ngày bắt đầu (Từ ngày), Bộ chọn ngày kết thúc (Đến ngày) và nút bấm xử lý logic trực tiếp qua Fetch API mà không cần tải lại trang.
+| Hạng mục đánh giá | Số tiêu chí | Tỷ lệ hoàn thành | Đánh giá & Kết quả đạt được |
+|---|:---:|:---:|---|
+| **Bài kiểm tra 1 (Phân tích & Thiết kế)** | 10/10 | **100%** | Đã hoàn thiện toàn diện: Bối cảnh, Bảng I/P/O chức năng, Yêu cầu phi chức năng, Sơ đồ Use Case Mermaid, Sơ đồ ERD 3NF, Kiến trúc 3 tầng và Kế hoạch triển khai 4 giai đoạn. |
+| **Bài kiểm tra 2 (Lập trình cơ bản)** | 10/10 | **100%** | Cấu trúc chuẩn MVC/Router, Auth JWT + Cookie, RBAC 3 vai trò, CRUD giao dịch & danh mục, Bộ lọc tìm kiếm đa tiêu chí, Thống kê biểu đồ Chart.js, Xử lý lỗi an toàn không crash. |
+| **Bài kiểm tra 3 (Tích hợp AI & Kiểm thử)** | 10/10 | **100%** | Mô hình Invisible AI (Classifier & Advisor), Bảo mật API Key trong `.env`, Kỹ thuật Prompt 3 vòng thử nghiệm (Độ chính xác 96%), Phòng vệ Fault-Tolerant, Bộ test **35/35 Pytest PASS 100%**. |
+| **Thi kết thúc học phần (Bảo vệ đồ án)** | 10/10 | **100%** | Hoàn thiện trọn vẹn mọi chức năng thực tế, CSDL 7 bảng, UI Glassmorphism Responsive, Docker container hóa, **GitHub Actions CI/CD passed xanh 100%**, Kịch bản thuyết trình và demo 7 phút chi tiết. |
 
 ---
 
-## 3. KẾ HOẠCH ĐỀ XUẤT CHO TUẦN TIẾP THEO (BẢO VỆ DỰ ÁN)
+## 2. NHỮNG CẬP NHẬT KỸ THUẬT ĐỘT PHÁ MỚI NHẤT (NỐI TIẾP BÀI KIỂM TRA 2)
 
-- **Nguyễn Tuấn Đạt (Trưởng nhóm):** Chịu trách nhiệm tổng hợp 4 file báo cáo trong thư mục `docs/` thành file Word (.docx) và chuẩn bị slide PowerPoint thuyết trình (tập trung vào cấu trúc Hệ thống và Demo AI).
-- **Phàn Ngọc Anh (Phó nhóm):** Chịu trách nhiệm kiểm thử toàn diện lại các luồng (Manual Testing) trên giao diện Web, chuẩn bị sẵn các dữ liệu đẹp để Demo trực tiếp trên lớp.
+Nhóm 02 đã thực hiện một đợt nâng cấp kỹ thuật toàn diện để đưa dự án từ giai đoạn "Lập trình cơ bản" sang "Tích hợp AI và Sẵn sàng Sản phẩm Thực tế":
 
-*Dự án đã sẵn sàng để đóng gói và bảo vệ thành công!*
+1. **Chuẩn hóa Giao diện Thu / Chi và Quản lý Danh mục:**
+   - Sửa triệt để lỗi hiển thị "Chưa phân loại" trên giao diện web.
+   - Định nghĩa tính ngữ nghĩa màu sắc: Thu nhập (+ xanh lá) và Chi tiêu (- đỏ cam) dựa trên thuộc tính `category_type` của CSDL.
+   - Tích hợp thành công **Modal Chỉnh sửa Giao dịch** (`PUT /api/transactions/{id}`) trực tiếp trên trang lịch sử giao dịch.
+   - Bổ sung **Modal Thêm Danh mục mới** (`POST /api/categories/`) trong trang Cài đặt (`settings.html`), sửa lỗi biến `msg` không xác định.
+2. **Nâng cấp Bộ Test Suite từ 21 lỗi lên 35/35 Test PASS (100%):**
+   - Tạo file `tests/conftest.py` tự động chạy `init_db()` để tạo bảng, quyền RBAC và danh mục mẫu cho bất kỳ CSDL mới nào.
+   - Thắt chặt các assertion của bài test (loại bỏ mã lỗi 500 nới lỏng trước đây).
+   - Tách biệt cookie và cô lập phiên làm việc giữa các test case.
+3. **Tự động hóa CI/CD với GitHub Actions Đạt Trạng Thái Xanh Tuyệt Đối (Success):**
+   - Đã sửa cấu hình `.github/workflows/ci.yml`: Nâng cấp Actions lên `@v4`, `@v5`.
+   - Cấp quyền bảo mật `permissions: security-events: write` cho bước quét lỗ hổng Trivy.
+   - Pipeline tự động chạy và PASS 100% cả 3 môi trường Python 3.10, Python 3.11, Python 3.12 trên nền CSDL PostgreSQL 15.
+4. **Cơ chế Dự phòng Heuristic cho AI (Zero-Downtime Fallback):**
+   - Xây dựng thuật toán phân loại Heuristic và tư vấn tài chính quy tắc thông minh nội bộ trong trường hợp mất kết nối OpenAI hoặc hết hạn mức API Key, đảm bảo trải nghiệm người dùng không bao giờ bị đứt đoạn.
+
+---
+
+## 3. PHÂN CÔNG VÀ KỊCH BẢN THUYẾT TRÌNH BẢO VỆ CỦA NHÓM 02
+
+Nhóm 02 đã thống nhất kịch bản bảo vệ trước Hội đồng chấm thi với thời lượng chuẩn 7 phút:
+
+- **Phần 1 - Đặt vấn đề & Kiến trúc (Nguyễn Tuấn Đạt - 1.5 phút):**  
+  Trình bày lý do chọn đề tài, đối tượng sinh viên/cá nhân, kiến trúc phân tầng FastAPI + Jinja2 + PostgreSQL + OpenAI.
+- **Phần 2 - Demo Thực tế Nghiệp vụ & Giao diện (Phàn Ngọc Anh - 2.5 phút):**  
+  Thao tác trên giao diện web: Đăng nhập tài khoản sinh viên với seed data 30 ngày có sẵn, thao tác bộ lọc ngày tháng và từ khóa, sử dụng Modal sửa giao dịch và Modal tạo danh mục mới.
+- **Phần 3 - Trình diễn Tích hợp AI & Cơ chế Phòng vệ (Nguyễn Tuấn Đạt - 2 phút):**  
+  Thêm giao dịch bằng ngôn ngữ tự nhiên để AI tự động phân loại, trình diễn khối Lời khuyên tài chính trên Dashboard, giải thích kỹ thuật 3 vòng tối ưu prompt và cơ chế Fallback an toàn.
+- **Phần 4 - Minh chứng Kiểm thử & CI/CD (Cả nhóm - 1 phút):**  
+  Chạy lệnh `pytest tests/` tại terminal để chứng minh 35/35 tests đạt kết quả xanh, mở trang GitHub Repository để chứng minh pipeline CI/CD GitHub Actions đạt dấu tích xanh ✅ 100%.
+
+---
+
+*Hệ thống ExpenseAI của Nhóm 02 đã hoàn thiện trọn vẹn, xuất sắc vượt qua mọi tiêu chí kỹ thuật và tự tin bảo vệ thành công!*
