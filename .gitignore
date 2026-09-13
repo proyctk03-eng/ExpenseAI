@@ -27,3 +27,7 @@ env/
 *.sqlite
 *.db
 
+# Backups
+docs/backup/
+
+
