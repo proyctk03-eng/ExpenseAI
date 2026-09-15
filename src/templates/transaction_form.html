@@ -9,6 +9,12 @@
             </div>
             <div class="modal-body p-4">
                 <form id="txForm">
+                    <div class="mb-4 text-center">
+                        <input type="file" accept="image/*" id="receiptUpload" class="d-none">
+                        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="document.getElementById('receiptUpload').click()" id="scanReceiptBtn">
+                            <i class="fa-solid fa-camera me-1"></i> Quét Hóa Đơn bằng AI
+                        </button>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Ngày</label>
                         <input type="date" id="txDate" class="form-control" required>
@@ -80,6 +86,42 @@ document.addEventListener("DOMContentLoaded", () => {
         txModal = new bootstrap.Modal(modalEl);
         document.getElementById('txDate').valueAsDate = new Date();
         loadCategoriesIntoSelect();
+    }
+});
+
+document.getElementById('receiptUpload').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const btn = document.getElementById('scanReceiptBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang quét AI...';
+    btn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res = await fetch('/api/transactions/scan-receipt', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+            showToast('Quét hóa đơn thành công! Vui lòng kiểm tra lại.', 'success');
+            if (data.amount) document.getElementById('txAmount').value = data.amount;
+            if (data.description) document.getElementById('txDesc').value = data.description;
+            if (data.transaction_date) document.getElementById('txDate').value = data.transaction_date;
+        } else {
+            showToast(data.detail || 'Lỗi quét hóa đơn', 'danger');
+        }
+    } catch (err) {
+        showToast('Lỗi kết nối khi quét hóa đơn', 'danger');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        e.target.value = ''; // Reset input
     }
 });
 

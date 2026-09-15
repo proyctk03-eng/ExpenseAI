@@ -10,10 +10,12 @@ from src.database import get_db
 from src.models import Transaction, Category, User
 from src.utils.dependencies import get_current_user
 from src.services.ai_advice import AIAdviceService
+from src.services.ai_behavior import AIBehaviorService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/advice", tags=["advice"])
 advice_service = AIAdviceService()
+behavior_service = AIBehaviorService()
 
 
 @router.post("/")
@@ -57,3 +59,40 @@ def get_financial_advice(
 
     advice = advice_service.get_advice(summary, force_refresh=force_refresh)
     return {"advice": advice}
+
+@router.get("/behavior")
+def analyze_user_behavior(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Phân tích hành vi tiêu dùng từ 50 giao dịch gần nhất."""
+    # Lấy 50 giao dịch gần nhất
+    transactions = (
+        db.query(Transaction)
+        .filter(Transaction.user_id == current_user.id)
+        .order_by(Transaction.transaction_date.desc(), Transaction.id.desc())
+        .limit(50)
+        .all()
+    )
+    
+    if not transactions:
+        raise HTTPException(status_code=400, detail="Chưa có đủ dữ liệu giao dịch để phân tích hành vi.")
+        
+    # Sắp xếp lại theo chiều thuận thời gian để AI dễ nhận diện chuỗi
+    transactions.reverse()
+    
+    log_lines = []
+    for tx in transactions:
+        amount_str = f"{tx.amount:,.0f}đ"
+        cat = tx.category_name if tx.category_name else "Khác"
+        # Chỉ lấy expense để phân tích hành vi tiêu dùng
+        if tx.category_type == "expense":
+            log_lines.append(f"[{tx.transaction_date}] {cat}: {tx.description} ({amount_str})")
+            
+    if len(log_lines) < 5:
+        raise HTTPException(status_code=400, detail="Cần ít nhất 5 giao dịch chi tiêu để phân tích hành vi.")
+        
+    log_str = "\n".join(log_lines)
+    analysis = behavior_service.analyze_behavior(log_str)
+    
+    return {"analysis": analysis}

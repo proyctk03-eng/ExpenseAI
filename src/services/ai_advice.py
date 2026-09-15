@@ -2,27 +2,28 @@
 import hashlib
 import json
 import logging
+import sys
 import time
 from typing import Dict, Any, Optional
 
 import httpx
 from openai import OpenAI, APITimeoutError, APIConnectionError, RateLimitError
 
-from src.config import OPENAI_API_KEY, GEMINI_API_KEY
+from src.config import GEMINI_API_KEY, OPENAI_API_KEY
 
 logger = logging.getLogger(__name__)
 
 
+import asyncio
+
 class AIAdviceService:
-    """Gọi Gemini hoặc OpenAI API để sinh lời khuyên tài chính, kèm bộ nhớ đệm và Fallback thông minh."""
+    """Gọi Gemini hoặc OpenAI API để sinh lời khuyên tài chính, kèm bộ nhớ đệm Redis và Fallback thông minh."""
 
     def __init__(self):
         self.is_available = False
         self.client = None
         self.model = "gpt-3.5-turbo"
-        # Cache dạng {hash_key: {"advice": str, "timestamp": float}}
-        self._cache: Dict[str, Dict[str, Any]] = {}
-        self._cache_ttl = 900  # 15 phút
+        self._cache_ttl = 86400  # 24 giờ
 
         # Ưu tiên sử dụng Google Gemini nếu có GEMINI_API_KEY
         if GEMINI_API_KEY and GEMINI_API_KEY != "mock-api-key-for-testing":
@@ -30,10 +31,10 @@ class AIAdviceService:
                 self.client = OpenAI(
                     api_key=GEMINI_API_KEY,
                     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-                    http_client=httpx.Client(timeout=15.0),
+                    timeout=15.0,
                     max_retries=1,
                 )
-                self.model = "gemini-3.6-flash"
+                self.model = "gemini-1.5-flash"
                 self.is_available = True
                 logger.info("AIAdviceService khởi tạo thành công với mô hình Google Gemini (%s)", self.model)
             except Exception as e:
@@ -44,7 +45,7 @@ class AIAdviceService:
             try:
                 self.client = OpenAI(
                     api_key=OPENAI_API_KEY,
-                    http_client=httpx.Client(timeout=15.0),
+                    timeout=15.0,
                     max_retries=1,
                 )
                 self.model = "gpt-3.5-turbo"
@@ -118,58 +119,75 @@ class AIAdviceService:
             f"vào tài khoản tiết kiệm ngay khi có nguồn thu."
         )
 
-    def get_advice(self, summary_data: dict, force_refresh: bool = False) -> str:
-        """Phân tích dữ liệu chi tiêu và đưa ra lời khuyên với Cache 15 phút, Retry và Heuristic Fallback."""
-        now = time.time()
+    async def get_advice(self, summary_data: dict, force_refresh: bool = False) -> str:
+        """Phân tích dữ liệu chi tiêu và đưa ra lời khuyên với Redis Cache 24 giờ, Retry và Heuristic Fallback."""
+        from src.config import redis_client
         hash_key = self._compute_hash(summary_data)
+        cache_key = f"advice:{hash_key}"
 
         # Kiểm tra Cache
-        if not force_refresh and hash_key in self._cache:
-            cache_entry = self._cache[hash_key]
-            if now - cache_entry["timestamp"] < self._cache_ttl:
-                logger.info("Trả về kết quả AI Advice từ Cache (0ms, 0 quota)")
-                return cache_entry["advice"]
+        if not force_refresh:
+            try:
+                cached_str = await redis_client.get(cache_key)
+                if cached_str:
+                    logger.info("Trả về kết quả AI Advice từ Redis Cache (0ms, 0 quota)")
+                    return cached_str
+            except Exception as e:
+                logger.warning("Lỗi Redis Cache: %s", e)
 
         # Nếu không có LLM client khả dụng -> kích hoạt Rule-Based Financial Advisor
         if not self.is_available or not self.client:
             advice = self._generate_rule_based_advice(summary_data)
-            self._cache[hash_key] = {"advice": advice, "timestamp": now}
+            try:
+                await redis_client.set(cache_key, advice, ex=self._cache_ttl)
+            except Exception:
+                pass
             return advice
 
-        prompt = (
-            "Bạn là chuyên gia tư vấn tài chính cá nhân. Dựa trên dữ liệu tổng hợp thu chi 3 tháng qua, "
-            "hãy đưa ra lời khuyên tài chính ngắn gọn (khoảng 100-150 chữ), thực tế, dùng định dạng Markdown "
-            "(in đậm các điểm mấu chốt và con số). Gợi ý hành động rõ ràng theo quy tắc 50/30/20."
-        )
+        try:
+            with open("src/prompts/financial_advice_prompt.txt", "r", encoding="utf-8") as f:
+                prompt = f.read().strip()
+        except Exception as e:
+            logger.error("Could not read financial_advice_prompt.txt: %s", e)
+            return "Lỗi cấu hình AI (Thiếu file prompt tư vấn)."
 
         max_attempts = 2
         for attempt in range(max_attempts):
             try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": prompt},
-                        {
-                            "role": "user",
-                            "content": f"Dữ liệu 3 tháng qua: {json.dumps(summary_data, ensure_ascii=False)}",
-                        },
-                    ],
-                    temperature=0.6,
-                )
-                advice_text = response.choices[0].message.content.strip()
-                self._cache[hash_key] = {"advice": advice_text, "timestamp": now}
+                async def _call_api():
+                    return await asyncio.to_thread(
+                        self.client.chat.completions.create,
+                        model=self.model,
+                        messages=[
+                            {"role": "system", "content": prompt},
+                            {
+                                "role": "user",
+                                "content": f"Dữ liệu 3 tháng qua: {json.dumps(summary_data, ensure_ascii=False)}",
+                            },
+                        ],
+                        temperature=0.6,
+                    )
+                    
+                response = await asyncio.wait_for(_call_api(), timeout=5.0)
+                content = response.choices[0].message.content
+                advice_text = (content or "").strip()
+                
+                try:
+                    await redis_client.set(cache_key, advice_text, ex=self._cache_ttl)
+                except Exception:
+                    pass
                 return advice_text
 
             except RateLimitError as e:
                 logger.warning("Gemini/OpenAI Rate Limit trong AI Advice (lần thử %d/%d): %s", attempt + 1, max_attempts, e)
                 if attempt < max_attempts - 1:
-                    time.sleep(1.5)
+                    await asyncio.sleep(1.5)
                 else:
                     break
-            except (APITimeoutError, APIConnectionError) as e:
+            except (APITimeoutError, APIConnectionError, asyncio.TimeoutError) as e:
                 logger.warning("Gemini/OpenAI Timeout trong AI Advice (lần thử %d/%d): %s", attempt + 1, max_attempts, e)
                 if attempt < max_attempts - 1:
-                    time.sleep(1.0)
+                    await asyncio.sleep(1.0)
                 else:
                     break
             except Exception as e:
@@ -179,5 +197,8 @@ class AIAdviceService:
         # Kích hoạt Fallback Chuyên gia Tài chính ngoại tuyến chất lượng cao
         logger.info("Kích hoạt Chuyên gia Tài chính Ngoại tuyến do Gemini API đang quá tải")
         advice = self._generate_rule_based_advice(summary_data)
-        self._cache[hash_key] = {"advice": advice, "timestamp": now}
+        try:
+            await redis_client.set(cache_key, advice, ex=self._cache_ttl)
+        except Exception:
+            pass
         return advice

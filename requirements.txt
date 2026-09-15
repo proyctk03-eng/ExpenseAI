@@ -18,3 +18,6 @@ flake8==7.1.1
 isort==5.13.2
 mypy==1.11.2
 alembic==1.13.1
+aiosqlite==0.20.0
+redis==5.0.8
+google-generativeai>=0.8.0

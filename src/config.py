@@ -14,6 +14,11 @@ SECRET_KEY = os.getenv("SECRET_KEY") or "expenseai_dev_secret_key_change_in_prod
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
+# --- Redis Configuration ---
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+import redis.asyncio as redis
+redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+
 # --- Các biến môi trường có giá trị mặc định ---
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))

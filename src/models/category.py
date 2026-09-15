@@ -19,6 +19,7 @@ class Category(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     type: Mapped[str] = mapped_column(String(20), nullable=False)
+    color: Mapped[Optional[str]] = mapped_column(String(7), nullable=True)
     user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
     is_system: Mapped[bool] = mapped_column(default=False, server_default="false", nullable=False)
 

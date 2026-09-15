@@ -1,49 +1,25 @@
-# ==========================================
-# STAGE 1: BUILDER (Tải và cài đặt thư viện)
-# ==========================================
-FROM python:3.10-slim as builder
+# Sử dụng Python 3.11 slim theo yêu cầu
+FROM python:3.11-slim
 
+# Thiết lập thư mục làm việc
 WORKDIR /app
 
-# Khởi tạo môi trường ảo (Virtual Environment)
-RUN python -m venv /opt/venv
-# Kích hoạt venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Khắc phục lỗi timezone & cài đặt các thư viện hệ thống cần thiết (nếu có)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Cài đặt thư viện
+# Copy file requirements và cài đặt
 COPY requirements.txt .
-RUN pip install --upgrade pip && \
+RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# ==========================================
-# STAGE 2: FINAL (Đóng gói Image cuối cùng)
-# ==========================================
-FROM python:3.10-slim
+# Copy toàn bộ mã nguồn vào container
+COPY . .
 
-WORKDIR /app
-
-# Copy toàn bộ venv từ stage builder
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-ENV PYTHONUNBUFFERED=1
-
-# TẠO USER NON-ROOT
-RUN useradd -m -s /bin/bash appuser && \
-    chown -R appuser:appuser /app
-USER appuser
-
-# Copy mã nguồn dự án
-COPY --chown=appuser:appuser src/ ./src/
-COPY --chown=appuser:appuser scripts/ ./scripts/
-COPY --chown=appuser:appuser alembic/ ./alembic/
-COPY --chown=appuser:appuser alembic.ini .
-
-
-# HEALTHCHECK
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/')" || exit 1
-
+# Expose port 8000
 EXPOSE 8000
 
-# Lệnh khởi động
+# Khởi chạy ứng dụng qua Uvicorn
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]

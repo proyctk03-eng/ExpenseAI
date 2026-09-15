@@ -82,9 +82,34 @@
             <div id="aiAdvice" class="fst-italic" style="line-height: 1.7; color: var(--text-body); min-height: 70px; font-size: 0.92rem;">
                 Đang phân tích dữ liệu chi tiêu của bạn...
             </div>
-            <button class="btn btn-outline-secondary btn-sm w-100 mt-2" onclick="refreshAiAdvice(true)" id="btnRefreshAiAdvice">
-                <i class="fa-solid fa-rotate-right me-1" id="iconRefreshAiAdvice"></i> Tạo gợi ý mới
-            </button>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-outline-secondary btn-sm flex-grow-1" onclick="refreshAiAdvice(true)" id="btnRefreshAiAdvice">
+                    <i class="fa-solid fa-rotate-right me-1" id="iconRefreshAiAdvice"></i> Tạo gợi ý mới
+                </button>
+                <button class="btn btn-primary btn-sm flex-grow-1" onclick="openBehaviorModal()" id="btnBehavior">
+                    <i class="fa-solid fa-magnifying-glass-chart me-1"></i> Chuỗi hành vi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Chuỗi Hành Vi -->
+<div class="modal fade" id="behaviorModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-light);">
+                <h5 class="modal-title fw-bold" style="color: var(--text-dark);">
+                    <i class="fa-solid fa-brain me-2" style="color: var(--accent-blue);"></i>Phân Tích Chuỗi Hành Vi & Lỗ Hổng
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="behaviorContent">
+                <div class="text-center text-muted my-4">
+                    <i class="fa-solid fa-spinner fa-spin fa-2x mb-3"></i>
+                    <p>AI đang phân tích tâm lý tiêu dùng của bạn...</p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -260,6 +285,33 @@ async function refreshAiAdvice(force = false) {
     } finally {
         if (btn) btn.disabled = false;
         if (icon) icon.className = 'fa-solid fa-rotate-right me-1';
+    }
+}
+
+async function openBehaviorModal() {
+    const modalEl = document.getElementById('behaviorModal');
+    const bsModal = new bootstrap.Modal(modalEl);
+    bsModal.show();
+    
+    const content = document.getElementById('behaviorContent');
+    content.innerHTML = `
+        <div class="text-center text-muted my-4">
+            <i class="fa-solid fa-spinner fa-spin fa-2x mb-3"></i>
+            <p>AI đang phân tích tâm lý tiêu dùng của bạn...</p>
+        </div>
+    `;
+
+    try {
+        const res = await fetch('/api/advice/behavior');
+        const data = await res.json();
+        
+        if (res.ok) {
+            content.innerHTML = formatAdviceText(data.analysis);
+        } else {
+            content.innerHTML = `<div class="alert alert-warning"><i class="fa-solid fa-triangle-exclamation me-2"></i> ${data.detail || 'Không thể phân tích dữ liệu.'}</div>`;
+        }
+    } catch (e) {
+        content.innerHTML = `<div class="alert alert-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i> Lỗi kết nối khi tải phân tích AI.</div>`;
     }
 }
 

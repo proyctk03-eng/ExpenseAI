@@ -10,7 +10,21 @@ from openai import OpenAI, APITimeoutError, APIConnectionError, RateLimitError
 
 from src.config import OPENAI_API_KEY, GEMINI_API_KEY
 
+import asyncio
+from pydantic import BaseModel, Field
+
 logger = logging.getLogger(__name__)
+
+VALID_CATEGORIES = [
+    "Ăn uống", "Di chuyển", "Mua sắm", "Hóa đơn", "Giải trí", 
+    "Sức khỏe", "Giáo dục", "Tiền bố mẹ gửi", "Lương part-time", 
+    "Học bổng", "Thu nhập", "Nhà cửa", "Cá nhân", "Khác", "Chưa phân loại"
+]
+
+class CategoryResponse(BaseModel):
+    category: str
+    confidence: float = Field(default=0.95)
+    type: str = Field(default="expense")
 
 # Từ điển quy chuẩn tiếng Việt với độ tin cậy cao
 VIETNAMESE_HEURISTICS = [
@@ -90,15 +104,13 @@ VIETNAMESE_HEURISTICS = [
 
 
 class AIClassifier:
-    """Phân loại giao dịch vào danh mục bằng Gemini hoặc OpenAI, có Cache & Rule Heuristics."""
+    """Phân loại giao dịch vào danh mục bằng Gemini hoặc OpenAI, có Cache Redis & Rule Heuristics."""
 
     def __init__(self):
         self.is_available = False
         self.client = None
         self.model = "gpt-3.5-turbo"
-        # Cache in-memory dạng {normalized_text: {"data": dict, "timestamp": float}}
-        self._cache: Dict[str, Dict[str, Any]] = {}
-        self._cache_ttl = 3600  # 1 giờ
+        self._cache_ttl = 86400  # 24 giờ
 
         # Ưu tiên sử dụng Google Gemini nếu có GEMINI_API_KEY
         if GEMINI_API_KEY and GEMINI_API_KEY != "mock-api-key-for-testing":
@@ -106,10 +118,10 @@ class AIClassifier:
                 self.client = OpenAI(
                     api_key=GEMINI_API_KEY,
                     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-                    http_client=httpx.Client(timeout=15.0),
+                    timeout=15.0,
                     max_retries=1,
                 )
-                self.model = "gemini-3.6-flash"
+                self.model = "gemini-1.5-flash"
                 self.is_available = True
                 logger.info("AIClassifier khởi tạo thành công với mô hình Google Gemini (%s)", self.model)
             except Exception as e:
@@ -120,7 +132,7 @@ class AIClassifier:
             try:
                 self.client = OpenAI(
                     api_key=OPENAI_API_KEY,
-                    http_client=httpx.Client(timeout=15.0),
+                    timeout=15.0,
                     max_retries=1,
                 )
                 self.model = "gpt-3.5-turbo"
@@ -148,14 +160,9 @@ class AIClassifier:
                     }
         return None
 
-    def classify(self, description: str, user_id: int = None, db = None) -> dict:
-        """Phân loại mô tả giao dịch theo kiến trúc 5 tầng bền vững:
-        Tầng 1 (L1 Fact Memory - TencentDB Agent Memory style): Tra cứu kinh nghiệm cá nhân.
-        Tầng 2 (L2 In-Memory Cache): Tra cứu kết quả đã suy luận còn hạn TTL.
-        Tầng 3 (L3 High-Confidence Heuristics): Tra cứu từ điển tiếng Việt chuẩn xác cao (0ms, 0 quota).
-        Tầng 4 (L4 Gemini/OpenAI LLM + Backoff): Gọi API bên ngoài kèm cơ chế retry khi 429.
-        Tầng 5 (L5 Graceful Fallback): Tự động dự phòng quy tắc ngoại tuyến khi API lỗi.
-        """
+    async def classify(self, description: str, user_id: Optional[int] = None, db = None) -> Dict[str, Any]:
+        """Phân loại mô tả giao dịch theo kiến trúc 5 tầng bền vững:"""
+        from src.config import redis_client
         desc_norm = self._normalize_text(description)
         if not desc_norm:
             return {"category": "Khác", "confidence": 0.0, "type": "expense", "source": "default"}
@@ -163,13 +170,22 @@ class AIClassifier:
         # Tầng 1: Tra cứu bộ nhớ người dùng (L1 Fact Memory)
         if user_id and db:
             try:
+                from sqlalchemy import select
                 from src.models.user_memory_rule import UserMemoryRule
-                rules = (
-                    db.query(UserMemoryRule)
-                    .filter(UserMemoryRule.user_id == user_id)
-                    .order_by(UserMemoryRule.frequency.desc())
-                    .all()
-                )
+                
+                # Check if db is async session or sync session
+                if hasattr(db, 'execute'):
+                    stmt = select(UserMemoryRule).filter(UserMemoryRule.user_id == user_id).order_by(UserMemoryRule.frequency.desc())
+                    res = await db.execute(stmt)
+                    rules = res.scalars().all()
+                else:
+                    rules = (
+                        db.query(UserMemoryRule)
+                        .filter(UserMemoryRule.user_id == user_id)
+                        .order_by(UserMemoryRule.frequency.desc())
+                        .all()
+                    )
+                    
                 for rule in rules:
                     if rule.keyword_pattern and rule.keyword_pattern.lower() in desc_norm:
                         cat_name = rule.category.name if rule.category else "Khác"
@@ -183,16 +199,23 @@ class AIClassifier:
             except Exception as e:
                 logger.warning("Lỗi tra cứu UserMemoryRule: %s", e)
 
-        # Tầng 2: In-Memory Cache (TTL 1 giờ)
-        now = time.time()
-        cached = self._cache.get(desc_norm)
-        if cached and (now - cached["timestamp"] < self._cache_ttl):
-            return cached["data"]
+        # Tầng 2: Redis Cache (TTL 24 giờ)
+        cache_key = f"classifier:{desc_norm}"
+        try:
+            cached_str = await redis_client.get(cache_key)
+            if cached_str:
+                logger.info("Trả về kết quả AI Classifier từ Redis Cache")
+                return json.loads(cached_str)
+        except Exception as e:
+            logger.warning("Lỗi Redis Cache: %s", e)
 
         # Tầng 3: High-Confidence Heuristics Engine (Phân loại cực nhanh cho 85%+ chi tiêu thường nhật)
         heuristic_res = self._match_heuristics(desc_norm)
         if heuristic_res:
-            self._cache[desc_norm] = {"data": heuristic_res, "timestamp": now}
+            try:
+                await redis_client.set(cache_key, json.dumps(heuristic_res), ex=self._cache_ttl)
+            except Exception:
+                pass
             return heuristic_res
 
         # Nếu không có LLM client khả dụng -> dùng heuristic dự phòng
@@ -201,61 +224,79 @@ class AIClassifier:
             return fallback_res
 
         # Tầng 4: Gọi Gemini / OpenAI LLM cho các mô tả phức tạp, kèm Retry Exponential Backoff
-        prompt = (
-            "Bạn là chuyên gia phân loại tài chính cá nhân. Hãy phân loại giao dịch sau vào một "
-            "trong các danh mục: Ăn uống, Di chuyển, Mua sắm, Hóa đơn, Giải trí, Sức khỏe, Giáo dục, "
-            "Tiền bố mẹ gửi, Lương part-time, Học bổng, Khác. Xác định loại là 'expense' (chi tiêu) hoặc 'income' (thu nhập). "
-            'Chỉ trả về JSON duy nhất có dạng: {"category": "...", "confidence": 0.95, "type": "expense"}.'
-        )
+        try:
+            with open("src/prompts/classification_prompt.txt", "r", encoding="utf-8") as f:
+                prompt = f.read().strip()
+        except Exception as e:
+            logger.error("Could not read classification_prompt.txt: %s", e)
+            return {"category": "Chưa phân loại", "confidence": 0.0, "type": "expense", "source": "missing_prompt"}
 
         max_attempts = 2
         for attempt in range(max_attempts):
             try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    response_format={"type": "json_object"},
-                    messages=[
-                        {"role": "system", "content": prompt},
-                        {"role": "user", "content": description},
-                    ],
-                    temperature=0.0,
-                )
+                # Wrap API call with asyncio.wait_for for strict timeout
+                async def _call_api():
+                    return await asyncio.to_thread(
+                        self.client.chat.completions.create,
+                        model=self.model,
+                        response_format={"type": "json_object"},
+                        messages=[
+                            {"role": "system", "content": prompt},
+                            {"role": "user", "content": description},
+                        ],
+                        temperature=0.1,
+                    )
+                
+                response = await asyncio.wait_for(_call_api(), timeout=2.5)
                 content = response.choices[0].message.content
-                parsed = json.loads(content)
-                if not isinstance(parsed, dict) or "category" not in parsed:
-                    raise ValueError("JSON trả về từ AI không hợp lệ")
+                
+                # Parse JSON
+                parsed_json = json.loads(content)
+                
+                # Guardrails (Chống ảo giác) bằng Pydantic
+                try:
+                    ai_result = CategoryResponse(**parsed_json)
+                    if ai_result.category not in VALID_CATEGORIES:
+                        logger.warning("Guardrail: Category '%s' không hợp lệ, chuyển về 'Khác'", ai_result.category)
+                        ai_result.category = "Khác"
+                        ai_result.confidence = 0.5
+                except Exception as ve:
+                    logger.warning("Guardrail: Pydantic validation failed: %s, fallback to Chưa phân loại", ve)
+                    ai_result = CategoryResponse(category="Chưa phân loại", confidence=0.0)
 
-                parsed.setdefault("confidence", 0.9)
-                parsed.setdefault("type", "expense")
-                parsed["source"] = "gemini_api"
+                parsed_dict = ai_result.model_dump()
+                parsed_dict["source"] = "gemini_api"
 
-                # Lưu vào Cache
-                self._cache[desc_norm] = {"data": parsed, "timestamp": now}
-                return parsed
+                # Lưu vào Redis Cache
+                try:
+                    await redis_client.set(cache_key, json.dumps(parsed_dict), ex=self._cache_ttl)
+                except Exception:
+                    pass
+                return parsed_dict
 
-            except RateLimitError as e:
-                logger.warning("Gemini/OpenAI Rate Limit hit (lần thử %d/%d): %s", attempt + 1, max_attempts, e)
+            except asyncio.TimeoutError:
+                logger.warning("Gemini API Timeout (asyncio.wait_for 2.5s) (lần thử %d/%d)", attempt + 1, max_attempts)
                 if attempt < max_attempts - 1:
-                    time.sleep(1.5)  # Backoff chờ hạ nhiệt hạn ngạch
-                else:
-                    break
-            except (APITimeoutError, APIConnectionError) as e:
-                logger.warning("Gemini/OpenAI Timeout/Connection error (lần thử %d/%d): %s", attempt + 1, max_attempts, e)
-                if attempt < max_attempts - 1:
-                    time.sleep(1.0)
+                    await asyncio.sleep(1.0)
                 else:
                     break
             except Exception as e:
-                logger.exception("Lỗi không xác định khi gọi AI Classifier: %s", e)
-                break
+                logger.exception("Lỗi gọi AI Classifier (lần thử %d/%d): %s", attempt + 1, max_attempts, e)
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(1.0)
+                else:
+                    break
 
         # Tầng 5: Graceful Heuristic Fallback khi API quá tải hoặc lỗi
         logger.info("Kích hoạt Graceful Fallback cho mô tả '%s'", description)
         fallback_res = {
-            "category": "Khác",
-            "confidence": 0.5,
+            "category": "Chưa phân loại",
+            "confidence": 0.0,
             "type": "expense",
             "source": "fallback_after_overload"
         }
-        self._cache[desc_norm] = {"data": fallback_res, "timestamp": now}
+        try:
+            await redis_client.set(cache_key, json.dumps(fallback_res), ex=self._cache_ttl)
+        except Exception:
+            pass
         return fallback_res
