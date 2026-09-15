@@ -31,11 +31,8 @@ class TestDeduplicationGuard:
 
         # Request 2: Ngay lập tức gửi lại cùng payload (mô phỏng double click hoặc lag)
         res2 = client.post("/api/transactions/", json=payload, headers=headers)
-        assert res2.status_code in [200, 201]
-        tx2 = res2.json()
-
-        # Phải trả về cùng ID và không tạo bản ghi mới
-        assert tx2["id"] == tx1_id, "Hệ thống phải trả về giao dịch đã tồn tại thay vì tạo bản ghi lặp!"
+        assert res2.status_code == 409
+        assert "trùng lặp" in res2.json()["detail"].lower()
 
         # Kiểm tra danh sách giao dịch chỉ có đúng 1 bản ghi
         list_res = client.get("/api/transactions/?search=Cà+phê+gặp+khách", headers=headers)

@@ -5,13 +5,14 @@ import threading
 import time
 from typing import List, Optional, Set, Tuple
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.models import Transaction, User, Category, AIPrediction
 from src.schemas.transaction import TransactionCreate, TransactionUpdate, TransactionResponse
 from src.utils.dependencies import require_permission
+from src.utils.limiter import limiter
 from src.services.ai_classifier import AIClassifier
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,8 @@ ai_classifier = AIClassifier()
 _in_flight_signatures: Set[Tuple[int, float, str, str]] = set()
 _in_flight_lock = threading.Lock()
 
+
+from sqlalchemy.orm import joinedload
 
 @router.get("/", response_model=List[TransactionResponse])
 def get_transactions(
@@ -37,9 +40,9 @@ def get_transactions(
 ):
     """Lấy danh sách giao dịch với bộ lọc."""
     if all_users and current_user.has_permission("*:*"):
-        query = db.query(Transaction)
+        query = db.query(Transaction).options(joinedload(Transaction.category))
     else:
-        query = db.query(Transaction).filter(Transaction.user_id == current_user.id)
+        query = db.query(Transaction).options(joinedload(Transaction.category)).filter(Transaction.user_id == current_user.id)
 
     if search:
         query = query.filter(Transaction.description.ilike(f"%{search.strip()}%"))
@@ -54,7 +57,9 @@ def get_transactions(
 
 
 @router.post("/", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 def create_transaction(
+    request: Request,
     tx_in: TransactionCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("transaction:create")),
