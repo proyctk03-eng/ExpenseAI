@@ -79,11 +79,11 @@
                 </div>
                 <h5 style="font-weight: 700; color: var(--text-dark); margin: 0;">AI Tư vấn</h5>
             </div>
-            <p id="aiAdvice" class="fst-italic" style="line-height: 1.7; color: var(--text-body); min-height: 60px;">
+            <div id="aiAdvice" class="fst-italic" style="line-height: 1.7; color: var(--text-body); min-height: 70px; font-size: 0.92rem;">
                 Đang phân tích dữ liệu chi tiêu của bạn...
-            </p>
-            <button class="btn btn-outline-secondary btn-sm w-100 mt-2" onclick="loadDashboard()">
-                <i class="fa-solid fa-rotate-right me-1"></i> Tạo gợi ý mới
+            </div>
+            <button class="btn btn-outline-secondary btn-sm w-100 mt-2" onclick="refreshAiAdvice()" id="btnRefreshAiAdvice">
+                <i class="fa-solid fa-rotate-right me-1" id="iconRefreshAiAdvice"></i> Tạo gợi ý mới
             </button>
         </div>
     </div>
@@ -173,18 +173,7 @@ async function loadDashboard() {
     } catch (e) { console.error('Chart error:', e); }
 
     // Load AI Advice
-    try {
-        document.getElementById('aiAdvice').innerText = 'Đang phân tích...';
-        const advRes = await fetch('/api/advice/', { method: 'POST' });
-        if (advRes.ok) {
-            const advData = await advRes.json();
-            document.getElementById('aiAdvice').innerText = advData.advice;
-        } else {
-            document.getElementById('aiAdvice').innerText = 'Hãy thêm ít nhất 5 giao dịch để AI có thể phân tích và đưa ra lời khuyên.';
-        }
-    } catch (e) {
-        showToast('Lỗi kết nối khi tải dashboard', 'danger');
-    }
+    await refreshAiAdvice();
 
     // Load Recent Transactions (5 newest)
     try {
@@ -227,6 +216,47 @@ async function loadDashboard() {
             }
         }
     } catch (e) { console.error('Recent TX error:', e); }
+}
+
+function formatAdviceText(text) {
+    if (!text) return '';
+    let formatted = escapeHtml(text);
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    formatted = formatted.replace(/(^|\n)\s*\*\s+/g, '$1• ');
+    formatted = formatted.replace(/\n/g, '<br>');
+    return formatted;
+}
+
+async function refreshAiAdvice() {
+    const btn = document.getElementById('btnRefreshAiAdvice');
+    const icon = document.getElementById('iconRefreshAiAdvice');
+    const adviceEl = document.getElementById('aiAdvice');
+    
+    if (btn) btn.disabled = true;
+    if (icon) icon.className = 'fa-solid fa-spinner fa-spin me-1';
+    if (adviceEl) adviceEl.innerHTML = '<span class="text-muted"><i class="fa-solid fa-spinner fa-spin me-2 text-primary"></i>AI đang phân tích dữ liệu chi tiêu...</span>';
+    
+    try {
+        const advRes = await fetch('/api/advice/', { method: 'POST' });
+        if (advRes.ok) {
+            const advData = await advRes.json();
+            adviceEl.className = '';
+            adviceEl.innerHTML = formatAdviceText(advData.advice);
+        } else {
+            const errData = await advRes.json().catch(() => ({}));
+            adviceEl.className = 'fst-italic text-muted';
+            adviceEl.innerText = errData.detail || 'Hãy thêm ít nhất 5 giao dịch để AI có thể phân tích và đưa ra lời khuyên.';
+        }
+    } catch (e) {
+        console.error('Advice error:', e);
+        if (adviceEl) {
+            adviceEl.className = 'text-danger small';
+            adviceEl.innerText = 'Lỗi kết nối khi tải lời khuyên AI.';
+        }
+    } finally {
+        if (btn) btn.disabled = false;
+        if (icon) icon.className = 'fa-solid fa-rotate-right me-1';
+    }
 }
 
 loadDashboard();

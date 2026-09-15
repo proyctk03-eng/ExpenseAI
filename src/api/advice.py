@@ -16,9 +16,18 @@ advice_service = AIAdviceService()
 def get_financial_advice(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     three_months_ago = date.today() - timedelta(days=90)
     
-    results = db.query(Category.name, Category.type, func.sum(Transaction.amount))\
-                .join(Transaction).filter(Transaction.user_id == current_user.id, Transaction.transaction_date >= three_months_ago)\
-                .group_by(Category.name, Category.type).all()
+    # Truy vấn cơ sở trong 90 ngày qua
+    base_query = db.query(Category.name, Category.type, func.sum(Transaction.amount))\
+                   .join(Transaction).filter(Transaction.transaction_date >= three_months_ago)
+                   
+    # Ưu tiên lấy dữ liệu của chính user
+    user_results = base_query.filter(Transaction.user_id == current_user.id).group_by(Category.name, Category.type).all()
+    
+    # Nếu là Admin và chưa có giao dịch cá nhân, phân tích tổng hợp hệ thống
+    if not user_results and (current_user.is_admin or current_user.has_permission("*:*")):
+        results = base_query.group_by(Category.name, Category.type).all()
+    else:
+        results = user_results
                 
     summary = {"income": {}, "expense": {}}
     for cat_name, cat_type, total in results:
