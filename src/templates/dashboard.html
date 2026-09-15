@@ -11,9 +11,9 @@
             <option value="this_year">Năm nay</option>
             <option value="all_time">Tất cả</option>
         </select>
-        <a href="/transactions" class="btn btn-glass">
+        <button onclick="openCreateModal()" class="btn btn-glass">
             <i class="fa-solid fa-plus"></i> Thêm giao dịch
-        </a>
+        </button>
     </div>
 </div>
 
@@ -104,6 +104,9 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Form -->
+{% include "transaction_form.html" %}
 {% endblock %}
 
 {% block scripts %}
