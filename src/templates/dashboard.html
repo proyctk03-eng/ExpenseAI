@@ -82,7 +82,7 @@
             <div id="aiAdvice" class="fst-italic" style="line-height: 1.7; color: var(--text-body); min-height: 70px; font-size: 0.92rem;">
                 Đang phân tích dữ liệu chi tiêu của bạn...
             </div>
-            <button class="btn btn-outline-secondary btn-sm w-100 mt-2" onclick="refreshAiAdvice()" id="btnRefreshAiAdvice">
+            <button class="btn btn-outline-secondary btn-sm w-100 mt-2" onclick="refreshAiAdvice(true)" id="btnRefreshAiAdvice">
                 <i class="fa-solid fa-rotate-right me-1" id="iconRefreshAiAdvice"></i> Tạo gợi ý mới
             </button>
         </div>
@@ -227,7 +227,7 @@ function formatAdviceText(text) {
     return formatted;
 }
 
-async function refreshAiAdvice() {
+async function refreshAiAdvice(force = false) {
     const btn = document.getElementById('btnRefreshAiAdvice');
     const icon = document.getElementById('iconRefreshAiAdvice');
     const adviceEl = document.getElementById('aiAdvice');
@@ -237,7 +237,8 @@ async function refreshAiAdvice() {
     if (adviceEl) adviceEl.innerHTML = '<span class="text-muted"><i class="fa-solid fa-spinner fa-spin me-2 text-primary"></i>AI đang phân tích dữ liệu chi tiêu...</span>';
     
     try {
-        const advRes = await fetch('/api/advice/', { method: 'POST' });
+        const url = force ? '/api/advice/?force_refresh=true' : '/api/advice/';
+        const advRes = await fetch(url, { method: 'POST' });
         if (advRes.ok) {
             const advData = await advRes.json();
             adviceEl.className = '';

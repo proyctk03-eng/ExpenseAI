@@ -41,6 +41,7 @@
 
 <script>
 let txModal;
+let isTxSubmitting = false;
 
 async function loadCategoriesIntoSelect() {
     try {
@@ -91,9 +92,15 @@ function openCreateModal() {
 
 document.getElementById('txForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (isTxSubmitting) return; // Chống double-submit dồn dập
+
     const saveBtn = document.getElementById('saveBtn');
+    const formInputs = document.querySelectorAll('#txForm input, #txForm select');
+
+    isTxSubmitting = true;
     saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang lưu...';
     saveBtn.disabled = true;
+    formInputs.forEach(el => el.disabled = true);
 
     const amount = parseFloat(document.getElementById('txAmount').value);
     const description = document.getElementById('txDesc').value;
@@ -116,7 +123,7 @@ document.getElementById('txForm').addEventListener('submit', async (e) => {
             if (typeof loadTransactions === 'function') loadTransactions();
             if (typeof loadDashboard === 'function') loadDashboard();
         } else {
-            const err = await res.json();
+            const err = await res.json().catch(() => ({}));
             showToast(err.detail || 'Lỗi khi lưu giao dịch', 'danger');
         }
     } catch (err) {
@@ -124,6 +131,8 @@ document.getElementById('txForm').addEventListener('submit', async (e) => {
     } finally {
         saveBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Lưu giao dịch';
         saveBtn.disabled = false;
+        formInputs.forEach(el => el.disabled = false);
+        isTxSubmitting = false;
     }
 });
 </script>
