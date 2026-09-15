@@ -25,6 +25,7 @@ _in_flight_lock = threading.Lock()
 
 @router.get("/", response_model=List[TransactionResponse])
 def get_transactions(
+    all_users: bool = False,
     skip: int = 0,
     limit: int = 100,
     search: Optional[str] = None,
@@ -35,7 +36,7 @@ def get_transactions(
     current_user: User = Depends(require_permission("transaction:read")),
 ):
     """Lấy danh sách giao dịch với bộ lọc."""
-    if current_user.has_permission("*:*"):
+    if all_users and current_user.has_permission("*:*"):
         query = db.query(Transaction)
     else:
         query = db.query(Transaction).filter(Transaction.user_id == current_user.id)
@@ -99,11 +100,11 @@ def create_transaction(
                 .first()
             )
             if existing_tx:
-                logger.info("Đã tìm thấy giao dịch vừa tạo (id=%s), trả về bản ghi để chống lặp.", existing_tx.id)
-                return existing_tx
+                logger.warning("Phát hiện giao dịch in-flight lặp lại (id=%s). Trả về 409 Conflict.", existing_tx.id)
+                raise HTTPException(status_code=409, detail="Giao dịch trùng lặp vừa được tạo. Vui lòng không gửi lại liên tục.")
 
-        # 2. Cơ chế Idempotency Guard dựa trên Database (Cửa sổ 15 giây)
-        recent_threshold = datetime.now(timezone.utc) - timedelta(seconds=15)
+        # 2. Cơ chế Idempotency Guard dựa trên Database (Cửa sổ 5 giây)
+        recent_threshold = datetime.now(timezone.utc) - timedelta(seconds=5)
         existing_duplicate = (
             db.query(Transaction)
             .filter(
@@ -118,11 +119,8 @@ def create_transaction(
         )
 
         if existing_duplicate:
-            logger.info(
-                "Phát hiện giao dịch lặp lại từ user %s trong 15s (id=%s). Ngăn chặn insert trùng lặp.",
-                current_user.id, existing_duplicate.id
-            )
-            return existing_duplicate
+            logger.warning("Phát hiện giao dịch lặp lại từ user %s trong 5s (id=%s). Trả về 409 Conflict.", current_user.id, existing_duplicate.id)
+            raise HTTPException(status_code=409, detail="Giao dịch trùng lặp vừa được tạo. Vui lòng không gửi lại liên tục.")
 
         # 3. Phân loại danh mục bằng AI hoặc Heuristics (Bọc an toàn)
         category_id = tx_in.category_id
