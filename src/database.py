@@ -63,26 +63,24 @@ def seed_default_rbac(db: Session) -> None:
 
 def seed_default_categories(db: Session) -> None:
     from src.models import Category
-    default_categories = [
-        {"name": "Lương", "type": "income"},
-        {"name": "Thưởng", "type": "income"},
-        {"name": "Thu nhập khác", "type": "income"},
-        {"name": "Ăn uống", "type": "expense"},
-        {"name": "Di chuyển", "type": "expense"},
-        {"name": "Học tập", "type": "expense"},
-        {"name": "Giải trí", "type": "expense"},
-        {"name": "Sinh hoạt", "type": "expense"},
-        {"name": "Mua sắm", "type": "expense"},
-        {"name": "Khác", "type": "expense"},
-    ]
-    for cat in default_categories:
-        exists = db.query(Category).filter(
-            Category.user_id.is_(None),
-            Category.name == cat["name"]
-        ).first()
-        if not exists:
-            db.add(Category(name=cat["name"], type=cat["type"], user_id=None))
-    db.commit()
+    
+    # Kiểm tra xem đã có danh mục hệ thống nào chưa để tránh vòng lặp thừa
+    if not db.query(Category).filter(Category.user_id.is_(None)).first():
+        default_categories = [
+            {"name": "Lương", "type": "income"},
+            {"name": "Thưởng", "type": "income"},
+            {"name": "Thu nhập khác", "type": "income"},
+            {"name": "Ăn uống", "type": "expense"},
+            {"name": "Di chuyển", "type": "expense"},
+            {"name": "Học tập", "type": "expense"},
+            {"name": "Giải trí", "type": "expense"},
+            {"name": "Sinh hoạt", "type": "expense"},
+            {"name": "Mua sắm", "type": "expense"},
+            {"name": "Khác", "type": "expense"},
+        ]
+        for cat in default_categories:
+            db.add(Category(name=cat["name"], type=cat["type"], user_id=None, is_system=True))
+        db.commit()
 
 def seed_default_feedback(db: Session) -> None:
     """Tự động khởi tạo dữ liệu mẫu cho hệ thống Phản hồi (Feedback Tickets)."""

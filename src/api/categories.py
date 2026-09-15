@@ -11,8 +11,8 @@ from src.utils.dependencies import get_current_user, require_permission
 router = APIRouter(prefix="/api/categories", tags=["categories"])
 
 @router.get("/", response_model=List[CategoryResponse])
-def get_categories(db: Session = Depends(get_db), current_user: User = Depends(require_permission("category:read"))):
-    if current_user.has_permission("*:*"):
+def get_categories(all_users: bool = False, db: Session = Depends(get_db), current_user: User = Depends(require_permission("category:read"))):
+    if all_users and current_user.has_permission("*:*"):
         return db.query(Category).all()
     return db.query(Category).filter((Category.user_id == current_user.id) | (Category.user_id == None)).all()
 

@@ -101,6 +101,7 @@ async function loadSettings() {
         if (catRes.ok) {
             const cats = await catRes.json();
             const tbody = document.getElementById('catTableBody');
+            tbody.innerHTML = ''; // Xóa sạch bảng trước khi lặp qua dữ liệu trả về
             let html = '';
             cats.forEach(c => {
                 const typeName = c.type === 'expense' ? 'Chi tiêu' : 'Thu nhập';
