@@ -5,9 +5,11 @@ __pycache__/
 
 # Environments
 .env
+.env*
 .venv/
 venv/
 env/
+scratch/
 
 # Pytest
 .pytest_cache/

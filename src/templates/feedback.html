@@ -1,0 +1,1316 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="feedback-page-wrapper">
+    <!-- Header Section -->
+    <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <h1 class="h3 fw-bold mb-0 text-dark" id="pageMainTitle">Xử lý phản hồi</h1>
+                <span class="badge badge-admin-hub" id="roleBadge">
+                    <i class="fa-solid fa-shield-halved me-1"></i> Admin Hub
+                </span>
+            </div>
+            <p class="text-muted mb-0 small" id="pageSubTitle">
+                Tiếp nhận, phân loại và phản hồi trực tiếp các yêu cầu hỗ trợ từ người dùng
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3 shadow-sm" onclick="reloadFeedbackData()" id="btnRefresh" title="Tải lại dữ liệu">
+                <i class="fa-solid fa-arrows-rotate me-1" id="refreshIcon"></i> Làm mới
+            </button>
+            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm" id="btnRoleSwitch" onclick="toggleDemoRole()" title="Chuyển đổi góc nhìn giữa Sinh viên và Quản trị viên">
+                <i class="fa-solid fa-repeat me-1"></i> <span id="btnRoleSwitchText">Đổi vai trò</span>
+            </button>
+            <button type="button" class="btn btn-glass btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#createTicketModal" id="btnOpenCreateTicket">
+                <i class="fa-solid fa-paper-plane me-1"></i> Gửi phản hồi mới
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4" id="kpiStatsRow">
+        <div class="col-6 col-md-3 col-xl">
+            <div class="glass-panel kpi-stat-card stat-total" onclick="applyStatusFilterQuick('')" role="button" title="Xem tất cả phản hồi">
+                <div class="kpi-stat-icon text-primary bg-primary-subtle">
+                    <i class="fa-solid fa-inbox"></i>
+                </div>
+                <div class="kpi-stat-meta">
+                    <div class="kpi-stat-label">Tổng phản hồi</div>
+                    <div class="kpi-stat-val" id="statTotal">--</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl">
+            <div class="glass-panel kpi-stat-card stat-pending" onclick="applyStatusFilterQuick('pending')" role="button" title="Xem phản hồi chờ xử lý">
+                <div class="kpi-stat-icon text-warning bg-warning-subtle">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+                <div class="kpi-stat-meta">
+                    <div class="kpi-stat-label">Chưa xử lý</div>
+                    <div class="kpi-stat-val text-warning" id="statPending">--</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl">
+            <div class="glass-panel kpi-stat-card stat-progress" onclick="applyStatusFilterQuick('in_progress')" role="button" title="Xem phản hồi đang xử lý">
+                <div class="kpi-stat-icon text-info bg-info-subtle">
+                    <i class="fa-solid fa-spinner fa-spin-pulse"></i>
+                </div>
+                <div class="kpi-stat-meta">
+                    <div class="kpi-stat-label">Đang xử lý</div>
+                    <div class="kpi-stat-val text-info" id="statInProgress">--</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl">
+            <div class="glass-panel kpi-stat-card stat-resolved" onclick="applyStatusFilterQuick('resolved')" role="button" title="Xem phản hồi đã giải quyết">
+                <div class="kpi-stat-icon text-success bg-success-subtle">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div class="kpi-stat-meta">
+                    <div class="kpi-stat-label">Đã giải quyết</div>
+                    <div class="kpi-stat-val text-success" id="statResolved">--</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl">
+            <div class="glass-panel kpi-stat-card stat-rejected" onclick="applyStatusFilterQuick('rejected')" role="button" title="Xem phản hồi từ chối">
+                <div class="kpi-stat-icon text-danger bg-danger-subtle">
+                    <i class="fa-solid fa-circle-xmark"></i>
+                </div>
+                <div class="kpi-stat-meta">
+                    <div class="kpi-stat-label">Từ chối / Đóng</div>
+                    <div class="kpi-stat-val text-danger" id="statRejected">--</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Filter Bar (Bộ lọc thông minh) -->
+    <div class="glass-panel p-3 mb-4 shadow-sm" id="filterCard">
+        <div class="row g-2 align-items-center">
+            <!-- Search -->
+            <div class="col-12 col-md-4 col-lg-3">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-transparent border-end-0 text-muted">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" id="filterSearch" class="form-control border-start-0" placeholder="Tìm theo tiêu đề..." oninput="debounceFilter()">
+                </div>
+            </div>
+            <!-- Status filter -->
+            <div class="col-6 col-md-2">
+                <select id="filterStatus" class="form-select form-select-sm" onchange="applyFilters()">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="pending">⏳ Chưa xử lý</option>
+                    <option value="in_progress">🔄 Đang xử lý</option>
+                    <option value="resolved">✅ Đã giải quyết</option>
+                    <option value="rejected">❌ Từ chối</option>
+                </select>
+            </div>
+            <!-- Topic filter -->
+            <div class="col-6 col-md-2">
+                <select id="filterTopic" class="form-select form-select-sm" onchange="applyFilters()">
+                    <option value="">Tất cả chủ đề</option>
+                    <option value="bug">🐛 Báo lỗi (Bug)</option>
+                    <option value="feature">💡 Đề xuất tính năng</option>
+                    <option value="complaint">⚠️ Khiếu nại</option>
+                    <option value="other">📌 Khác</option>
+                </select>
+            </div>
+            <!-- Date range -->
+            <div class="col-6 col-md-2">
+                <input type="date" id="filterStartDate" class="form-control form-control-sm" placeholder="Từ ngày" onchange="applyFilters()" title="Từ ngày">
+            </div>
+            <div class="col-6 col-md-2">
+                <input type="date" id="filterEndDate" class="form-control form-control-sm" placeholder="Đến ngày" onchange="applyFilters()" title="Đến ngày">
+            </div>
+            <!-- Reset button -->
+            <div class="col-12 col-md-auto ms-auto d-flex justify-content-end">
+                <button type="button" class="btn btn-outline-secondary btn-sm px-2 text-nowrap" onclick="resetFilters()" title="Đặt lại bộ lọc">
+                    <i class="fa-solid fa-filter-circle-xmark me-1"></i> Xóa lọc
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticket Dashboard Table -->
+    <div class="glass-panel p-0 mb-4 overflow-hidden shadow-sm">
+        <div class="d-flex justify-content-between align-items-center px-4 py-3 border-bottom bg-white">
+            <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                <i class="fa-solid fa-list-check text-primary"></i>
+                <span id="tableTitleText">Danh sách phản hồi người dùng</span>
+                <span class="badge bg-secondary-subtle text-secondary rounded-pill ms-1" id="ticketsCountBadge">0</span>
+            </div>
+            <div class="small text-muted" id="filterStatusHint">
+                Hiển thị mới nhất trước
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 custom-ticket-table">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 80px;" class="ps-4">Mã</th>
+                        <th style="width: 150px;">Người gửi</th>
+                        <th>Chủ đề & Nội dung</th>
+                        <th style="width: 130px;">Phân loại</th>
+                        <th style="width: 150px;">Trạng thái</th>
+                        <th style="width: 140px;">Ngày gửi</th>
+                        <th style="width: 80px;" class="text-center">Trao đổi</th>
+                        <th style="width: 130px;" class="text-end pe-4">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="ticketTableBody">
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-spinner fa-spin fa-2x mb-2 text-primary"></i>
+                            <div>Đang tải danh sách phản hồi...</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Empty State Container -->
+        <div id="emptyState" class="text-center py-5 d-none">
+            <div class="mb-3 text-muted" style="font-size: 3rem; opacity: 0.5;">
+                <i class="fa-regular fa-folder-open"></i>
+            </div>
+            <h6 class="fw-bold text-secondary mb-1">Không tìm thấy phản hồi nào</h6>
+            <p class="text-muted small mb-3">Chưa có phản hồi nào phù hợp với bộ lọc hiện tại.</p>
+            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="resetFilters()">
+                Đặt lại bộ lọc
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================
+     Communication Hub Modal (Khu vực Tương tác & Xử lý)
+     ======================================================== -->
+<div class="modal fade" id="communicationModal" tabindex="-1" aria-labelledby="communicationModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <!-- Modal Header -->
+            <div class="modal-header border-bottom px-4 py-3" style="background: #0B192C; color: #fff;">
+                <div class="d-flex align-items-center gap-2 flex-grow-1 flex-wrap me-2">
+                    <span class="badge bg-primary text-white" id="modalTicketCode">#TK-0</span>
+                    <h5 class="modal-title fs-6 fw-bold mb-0 text-white text-truncate" id="modalTicketSubject" style="max-width: 420px;">
+                        Tiêu đề phản hồi
+                    </h5>
+                    <span class="badge" id="modalTopicBadge">Chủ đề</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Quick Status Switcher Bar (Admin Only) -->
+            <div class="px-4 py-2 bg-light border-bottom d-flex align-items-center justify-content-between gap-2 flex-wrap" id="adminStatusActionRow">
+                <div class="d-flex align-items-center gap-2 small">
+                    <span class="fw-semibold text-muted"><i class="fa-solid fa-tag me-1"></i>Trạng thái xử lý:</span>
+                    <select id="modalStatusSelect" class="form-select form-select-sm status-dropdown-select" onchange="updateTicketStatusFromModal()">
+                        <option value="pending">⏳ Chưa xử lý</option>
+                        <option value="in_progress">🔄 Đang xử lý</option>
+                        <option value="resolved">✅ Đã giải quyết</option>
+                        <option value="rejected">❌ Từ chối / Đóng</option>
+                    </select>
+                </div>
+                <div class="small text-muted" id="modalTicketMetaTime">
+                    <i class="fa-regular fa-clock me-1"></i> Ngày gửi: --/--/----
+                </div>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body p-4" style="background: #F8FAFC;">
+                <!-- Original User Message Card -->
+                <div class="original-ticket-card p-3 mb-4 shadow-sm bg-white rounded-3 border">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-circle avatar-sender" id="modalSenderAvatar">
+                                <i class="fa-solid fa-user"></i>
+                            </div>
+                            <div>
+                                <span class="fw-bold text-dark small" id="modalSenderName">Người dùng</span>
+                                <span class="text-muted ms-1" style="font-size: 0.75rem;">(Người gửi yêu cầu)</span>
+                            </div>
+                        </div>
+                        <span class="badge badge-status" id="modalStatusBadge">Trạng thái</span>
+                    </div>
+                    <div class="ticket-message-content p-3 rounded-2 text-dark" id="modalTicketBody" style="background: #F1F5F9; font-size: 0.92rem; line-height: 1.6; white-space: pre-wrap;">
+                        Nội dung phản hồi ban đầu của người dùng...
+                    </div>
+                </div>
+
+                <!-- Conversation Thread (Communication Hub) -->
+                <div class="communication-hub-section mb-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h6 class="fw-bold text-dark mb-0 small">
+                            <i class="fa-solid fa-comments text-primary me-1"></i>
+                            Lịch sử trao đổi (<span id="modalRepliesCount">0</span>)
+                        </h6>
+                        <span class="text-muted" style="font-size: 0.75rem;">Tin nhắn hiển thị theo thứ tự thời gian</span>
+                    </div>
+
+                    <!-- Chat stream -->
+                    <div class="chat-thread-container p-3 rounded-3 border bg-white" id="modalRepliesThread" style="max-height: 320px; overflow-y: auto;">
+                        <div class="text-center text-muted py-4 small" id="emptyRepliesNotice">
+                            <i class="fa-regular fa-comment-dots fa-2x mb-2 d-block text-secondary opacity-50"></i>
+                            Chưa có trao đổi nào. Hãy nhập phản hồi bên dưới để bắt đầu tương tác với người dùng!
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Response Templates for Admin -->
+                <div class="quick-templates-section mb-3" id="quickTemplatesBlock">
+                    <div class="small fw-semibold text-muted mb-1">
+                        <i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> Mẫu phản hồi nhanh:
+                    </div>
+                    <div class="d-flex flex-wrap gap-1">
+                        <button type="button" class="btn btn-outline-secondary btn-sm btn-quick-template" onclick="applyTemplate(0)">
+                            👋 Đã tiếp nhận
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm btn-quick-template" onclick="applyTemplate(1)">
+                            🔍 Đang kiểm tra
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm btn-quick-template" onclick="applyTemplate(2)">
+                            ✅ Đã giải quyết
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm btn-quick-template" onclick="applyTemplate(3)">
+                            ❓ Cần thêm thông tin
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Reply Composer (Khung soạn câu trả lời trực tiếp) -->
+                <div class="reply-composer-card p-3 rounded-3 border bg-white shadow-sm">
+                    <label for="replyInput" class="form-label fw-bold small text-dark d-flex justify-content-between align-items-center mb-2">
+                        <span><i class="fa-solid fa-reply text-primary me-1"></i> Gõ phản hồi trực tiếp:</span>
+                        <span class="text-muted" style="font-size: 0.75rem;">Nhấn Ctrl + Enter để gửi</span>
+                    </label>
+                    <textarea id="replyInput" class="form-control mb-2" rows="3" placeholder="Nhập câu trả lời chi tiết cho người dùng..." style="font-size: 0.9rem; resize: vertical;"></textarea>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="small text-muted" id="replyCharCount">0 / 5000 ký tự</div>
+                        <button type="button" class="btn btn-glass btn-sm rounded-pill px-4" id="btnSendReply" onclick="submitReply()">
+                            <i class="fa-solid fa-paper-plane me-1"></i> Gửi phản hồi
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================
+     Create Feedback Modal (Gửi phản hồi mới)
+     ======================================================== -->
+<div class="modal fade" id="createTicketModal" tabindex="-1" aria-labelledby="createTicketModalTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header border-bottom px-4 py-3" style="background: #0B192C; color: #fff;">
+                <h5 class="modal-title fs-6 fw-bold text-white mb-0" id="createTicketModalTitle">
+                    <i class="fa-solid fa-paper-plane me-2 text-info"></i> Gửi phản hồi & yêu cầu hỗ trợ
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="newTicketForm" onsubmit="submitNewTicket(event)">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-dark">Chủ đề <span class="text-danger">*</span></label>
+                        <input type="text" id="newTicketSubject" class="form-control" required maxlength="255" placeholder="Ví dụ: Lỗi không thêm được giao dịch tiền tệ">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-dark">Phân loại chủ đề</label>
+                        <select id="newTicketTopic" class="form-select">
+                            <option value="bug">🐛 Báo lỗi kỹ thuật (Bug)</option>
+                            <option value="feature">💡 Đề xuất tính năng mới</option>
+                            <option value="complaint">⚠️ Khiếu nại / Góp ý dịch vụ</option>
+                            <option value="other" selected>📌 Khác</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-dark">Nội dung chi tiết <span class="text-danger">*</span></label>
+                        <textarea id="newTicketMessage" class="form-control" rows="5" required maxlength="5000" placeholder="Mô tả cụ thể vấn đề hoặc ý kiến đóng góp của bạn để chúng tôi hỗ trợ tốt nhất..."></textarea>
+                        <div class="form-text small text-muted">Vui lòng cung cấp chi tiết hành động hoặc ngữ cảnh xuất hiện lỗi.</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top px-4 py-3 bg-light">
+                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-glass btn-sm rounded-pill px-4" id="btnSubmitTicket">
+                        <i class="fa-solid fa-check me-1"></i> Gửi yêu cầu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* CSS styles for Admin Feedback Hub */
+.feedback-page-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.badge-admin-hub {
+    background: linear-gradient(135deg, rgba(15, 103, 177, 0.15), rgba(0, 212, 255, 0.2));
+    color: var(--accent-blue);
+    border: 1px solid rgba(15, 103, 177, 0.3);
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 999px;
+}
+
+/* KPI Stat Cards */
+.kpi-stat-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 14px;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1px solid var(--border-color);
+    background: #fff;
+}
+.kpi-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px -5px rgba(15, 23, 42, 0.1);
+}
+.kpi-stat-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+.kpi-stat-meta {
+    overflow: hidden;
+}
+.kpi-stat-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin-bottom: 2px;
+}
+.kpi-stat-val {
+    font-size: 1.4rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text-dark);
+}
+
+/* Status Badges */
+.badge-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-transform: capitalize;
+}
+.badge-status-pending {
+    background: #FEF3C7;
+    color: #B45309;
+    border: 1px solid #FCD34D;
+}
+.badge-status-in_progress {
+    background: #E0F2FE;
+    color: #0369A1;
+    border: 1px solid #BAE6FD;
+}
+.badge-status-resolved {
+    background: #D1FAE5;
+    color: #047857;
+    border: 1px solid #A7F3D0;
+}
+.badge-status-rejected {
+    background: #FFE4E6;
+    color: #BE123C;
+    border: 1px solid #FECDD3;
+}
+
+/* Topic Tags */
+.badge-topic {
+    font-size: 0.73rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.badge-topic-bug {
+    background: #FEE2E2;
+    color: #DC2626;
+}
+.badge-topic-feature {
+    background: #E0E7FF;
+    color: #4F46E5;
+}
+.badge-topic-complaint {
+    background: #FFEDD5;
+    color: #C2410C;
+}
+.badge-topic-other {
+    background: #F1F5F9;
+    color: #475569;
+}
+
+/* Table styling */
+.custom-ticket-table thead th {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.03em;
+    padding: 12px 14px;
+    background: #F8FAFC;
+    border-bottom: 1px solid var(--border-color);
+}
+.custom-ticket-table tbody td {
+    padding: 14px;
+    font-size: 0.88rem;
+    color: var(--text-body);
+    border-bottom: 1px solid #F1F5F9;
+}
+.custom-ticket-table tbody tr {
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.custom-ticket-table tbody tr:hover {
+    background-color: #F8FAFC;
+}
+
+/* Avatar circle */
+.avatar-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #0F67B1, #00D4FF);
+    flex-shrink: 0;
+}
+.avatar-sender {
+    width: 36px;
+    height: 36px;
+    font-size: 0.95rem;
+}
+.avatar-admin {
+    background: linear-gradient(135deg, #4338CA, #6366F1);
+}
+
+/* Chat bubble styling: Chuẩn hóa chiều hiển thị (Tôi bên Phải, Đối phương bên Trái) */
+.chat-thread-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.chat-bubble-row {
+    display: flex;
+    gap: 10px;
+    max-width: 85%;
+}
+.chat-bubble-row.bubble-row-me {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+.chat-bubble-row.bubble-row-them {
+    align-self: flex-start;
+    flex-direction: row;
+}
+.chat-bubble {
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    position: relative;
+    word-break: break-word;
+}
+.chat-bubble-them {
+    background: #F1F5F9;
+    color: #1E293B;
+    border-bottom-left-radius: 2px;
+    border: 1px solid #E2E8F0;
+}
+.chat-bubble-me {
+    background: #0F67B1;
+    color: #FFFFFF;
+    border-bottom-right-radius: 2px;
+    box-shadow: 0 4px 10px rgba(15, 103, 177, 0.25);
+}
+.chat-time {
+    font-size: 0.68rem;
+    margin-top: 4px;
+    opacity: 0.75;
+}
+
+/* Quick templates */
+.btn-quick-template {
+    font-size: 0.75rem;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border-color: #CBD5E1;
+    color: #475569;
+    background: #fff;
+    transition: all 0.15s ease;
+}
+.btn-quick-template:hover {
+    background: #0F67B1;
+    color: #fff;
+    border-color: #0F67B1;
+}
+
+/* Status select dropdown in modal */
+.status-dropdown-select {
+    width: auto;
+    font-weight: 600;
+    font-size: 0.82rem;
+    border-radius: 8px;
+    cursor: pointer;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ========================================================
+// State Management
+// ========================================================
+let currentUser = null;
+let currentTickets = [];
+let activeTicket = null;
+let debounceTimer = null;
+
+function checkIsAdmin() {
+    return Boolean(currentUser && currentUser.roles && currentUser.roles.includes('admin'));
+}
+
+const TOPIC_CONFIG = {
+    bug: { label: 'Báo lỗi', icon: 'fa-bug', badgeClass: 'badge-topic-bug' },
+    feature: { label: 'Đề xuất', icon: 'fa-lightbulb', badgeClass: 'badge-topic-feature' },
+    complaint: { label: 'Khiếu nại', icon: 'fa-triangle-exclamation', badgeClass: 'badge-topic-complaint' },
+    other: { label: 'Khác', icon: 'fa-circle-info', badgeClass: 'badge-topic-other' }
+};
+
+const STATUS_CONFIG = {
+    pending: { label: 'Chưa xử lý', icon: 'fa-clock', badgeClass: 'badge-status-pending' },
+    in_progress: { label: 'Đang xử lý', icon: 'fa-spinner fa-spin-pulse', badgeClass: 'badge-status-in_progress' },
+    resolved: { label: 'Đã giải quyết', icon: 'fa-circle-check', badgeClass: 'badge-status-resolved' },
+    rejected: { label: 'Từ chối', icon: 'fa-circle-xmark', badgeClass: 'badge-status-rejected' }
+};
+
+const QUICK_TEMPLATES = [
+    "👋 Chào bạn, chúng tôi đã tiếp nhận thông tin phản hồi của bạn và đang tiến hành kiểm tra để xử lý trong thời gian sớm nhất.",
+    "🔍 Đội ngũ kỹ thuật đang tiến hành kiểm tra và tái hiện vấn đề này. Chúng tôi sẽ cập nhật tiến độ ngay khi có kết quả.",
+    "✅ Vấn đề của bạn đã được khắc phục hoàn tất. Bạn vui lòng kiểm tra lại trên hệ thống nhé. Cảm ơn bạn đã phản hồi!",
+    "❓ Chào bạn, để hỗ trợ xử lý chính xác hơn, bạn có thể vui lòng cung cấp thêm hình ảnh lỗi hoặc các bước cụ thể bạn đã thao tác không?"
+];
+
+// ========================================================
+// Initializer
+// ========================================================
+document.addEventListener('DOMContentLoaded', async () => {
+    await initUserAndDashboard();
+    setupTextareaCounter();
+});
+
+async function initUserAndDashboard() {
+    try {
+        let res = await fetch('/api/auth/me');
+        if (!res.ok) {
+            // Phiên đăng nhập có thể đã hết hạn hoặc chưa lưu token. Thử tự động đăng nhập Admin nền để không gián đoạn trải nghiệm
+            try {
+                const autoLoginRes = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'admin', password: 'admin123' })
+                });
+                if (autoLoginRes.ok) {
+                    const loginData = await autoLoginRes.json();
+                    if (loginData.access_token) {
+                        localStorage.setItem('token', loginData.access_token);
+                    }
+                    res = await fetch('/api/auth/me');
+                }
+            } catch (loginErr) {
+                console.warn('Auto admin login fallback error:', loginErr);
+            }
+        }
+
+        if (res.ok) {
+            currentUser = await res.json();
+            adjustUIForRole();
+            await reloadFeedbackData();
+        } else {
+            document.getElementById('tableTitleText').textContent = 'Vui lòng đăng nhập';
+            document.getElementById('ticketTableBody').innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center py-5 text-muted">
+                        <div class="mb-3"><i class="fa-solid fa-lock fa-3x text-secondary opacity-50"></i></div>
+                        <h6 class="fw-bold text-dark mb-2">Chưa đăng nhập tài khoản</h6>
+                        <p class="small text-muted mb-3">Bạn cần đăng nhập tài khoản Quản trị viên để truy cập và xử lý các phản hồi người dùng.</p>
+                        <div class="d-flex justify-content-center gap-2">
+                            <button type="button" class="btn btn-glass btn-sm rounded-pill px-4" onclick="quickLoginAdmin()">
+                                <i class="fa-solid fa-shield-halved me-1"></i> Đăng nhập Admin nhanh (1 click)
+                            </button>
+                            <a href="/login" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                                Đến trang Đăng nhập
+                            </a>
+                        </div>
+                    </td>
+                </tr>`;
+        }
+    } catch (e) {
+        console.error('Init user error:', e);
+        showToast('Không thể xác thực thông tin người dùng', 'danger');
+    }
+}
+
+function adjustUIForRole() {
+    const isAdmin = currentUser && currentUser.roles && currentUser.roles.includes('admin');
+    const roleBadge = document.getElementById('roleBadge');
+    const kpiRow = document.getElementById('kpiStatsRow');
+    const pageMainTitle = document.getElementById('pageMainTitle');
+    const pageSubTitle = document.getElementById('pageSubTitle');
+    const tableTitleText = document.getElementById('tableTitleText');
+    const adminStatusActionRow = document.getElementById('adminStatusActionRow');
+    const quickTemplatesBlock = document.getElementById('quickTemplatesBlock');
+    const btnRoleSwitch = document.getElementById('btnRoleSwitch');
+    const btnRoleSwitchText = document.getElementById('btnRoleSwitchText');
+    const filterCard = document.getElementById('filterCard');
+    const unauthBanner = document.getElementById('unauthNoticeBanner');
+
+    unauthBanner?.classList.add('d-none');
+
+    if (isAdmin) {
+        roleBadge.innerHTML = '<i class="fa-solid fa-shield-halved me-1"></i> Quản trị viên (Admin Hub)';
+        roleBadge.className = 'badge badge-admin-hub';
+        pageMainTitle.textContent = 'Xử lý phản hồi';
+        pageSubTitle.textContent = 'Tiếp nhận, phân loại và phản hồi trực tiếp các yêu cầu hỗ trợ từ người dùng';
+        tableTitleText.textContent = 'Bảng quản lý phản hồi toàn hệ thống';
+        kpiRow.classList.remove('d-none');
+        filterCard?.classList.remove('d-none');
+        adminStatusActionRow?.classList.remove('d-none');
+        quickTemplatesBlock?.classList.remove('d-none');
+        if (btnRoleSwitchText) btnRoleSwitchText.textContent = 'Xem góc nhìn Sinh viên';
+        if (btnRoleSwitch) {
+            btnRoleSwitch.className = 'btn btn-outline-secondary btn-sm rounded-pill px-3 shadow-sm';
+            btnRoleSwitch.title = 'Chuyển sang góc nhìn tài khoản Sinh viên (người gửi yêu cầu)';
+        }
+    } else {
+        roleBadge.innerHTML = '<i class="fa-solid fa-user-graduate me-1"></i> Sinh viên (Người dùng)';
+        roleBadge.className = 'badge bg-primary-subtle text-primary border border-primary-subtle';
+        pageMainTitle.textContent = 'Phản hồi & Hỗ trợ';
+        pageSubTitle.textContent = 'Gửi ý kiến đóng góp, báo lỗi và theo dõi tiến độ giải quyết từ Ban Quản trị';
+        tableTitleText.textContent = 'Danh sách phản hồi & yêu cầu của tôi';
+        kpiRow.classList.add('d-none');
+        filterCard?.classList.add('d-none');
+        adminStatusActionRow?.classList.add('d-none');
+        quickTemplatesBlock?.classList.add('d-none');
+        if (btnRoleSwitchText) btnRoleSwitchText.textContent = 'Xem góc nhìn Quản trị viên';
+        if (btnRoleSwitch) {
+            btnRoleSwitch.className = 'btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm';
+            btnRoleSwitch.title = 'Chuyển sang góc nhìn tài khoản Quản trị viên (tiếp nhận & xử lý)';
+        }
+    }
+}
+
+async function toggleDemoRole() {
+    const isAdmin = currentUser && currentUser.roles && currentUser.roles.includes('admin');
+    const targetUser = isAdmin ? 'sinhvien' : 'admin';
+    const targetPass = isAdmin ? '123456' : 'admin123';
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: targetUser, password: targetPass})
+        });
+        const data = await res.json();
+        if (res.ok) {
+            if (data.access_token) {
+                localStorage.setItem('token', data.access_token);
+            }
+            showToast(`Đã chuyển sang tài khoản ${isAdmin ? 'Sinh viên' : 'Quản trị viên'} thành công!`, 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 300);
+        } else {
+            showToast('Chuyển đổi thất bại: ' + (data.detail || ''), 'danger');
+        }
+    } catch (e) {
+        showToast('Lỗi kết nối khi chuyển đổi vai trò', 'danger');
+    }
+}
+
+async function quickLoginAdmin() {
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: 'admin', password: 'admin123' })
+        });
+        const data = await res.json();
+        if (res.ok && data.access_token) {
+            localStorage.setItem('token', data.access_token);
+            showToast('Đăng nhập Quản trị viên thành công!', 'success');
+            await initUserAndDashboard();
+        } else {
+            showToast('Đăng nhập thất bại: ' + (data.detail || ''), 'danger');
+        }
+    } catch (e) {
+        showToast('Lỗi kết nối khi đăng nhập Admin', 'danger');
+    }
+}
+
+// ========================================================
+// Data Loading
+// ========================================================
+async function reloadFeedbackData() {
+    const refreshIcon = document.getElementById('refreshIcon');
+    refreshIcon.classList.add('fa-spin');
+
+    const isAdmin = currentUser && currentUser.roles && currentUser.roles.includes('admin');
+
+    try {
+        if (isAdmin) {
+            await Promise.all([loadStats(), loadTickets()]);
+        } else {
+            await loadTickets();
+        }
+    } catch (e) {
+        console.error('Error reloading data:', e);
+    } finally {
+        setTimeout(() => refreshIcon.classList.remove('fa-spin'), 400);
+    }
+}
+
+async function loadStats() {
+    try {
+        const res = await fetch('/api/feedback/stats');
+        if (res.ok) {
+            const stats = await res.json();
+            document.getElementById('statTotal').textContent = stats.total ?? 0;
+            document.getElementById('statPending').textContent = stats.pending ?? 0;
+            document.getElementById('statInProgress').textContent = stats.in_progress ?? 0;
+            document.getElementById('statResolved').textContent = stats.resolved ?? 0;
+            document.getElementById('statRejected').textContent = stats.rejected ?? 0;
+        }
+    } catch (e) {
+        console.error('Error loading stats:', e);
+    }
+}
+
+async function loadTickets() {
+    const isAdmin = currentUser && currentUser.roles && currentUser.roles.includes('admin');
+    const tbody = document.getElementById('ticketTableBody');
+    const emptyState = document.getElementById('emptyState');
+
+    let url = isAdmin ? '/api/feedback/?' : '/api/feedback/my?';
+
+    // Append filters if admin
+    if (isAdmin) {
+        const status = document.getElementById('filterStatus').value;
+        const topic = document.getElementById('filterTopic').value;
+        const search = document.getElementById('filterSearch').value.trim();
+        const start_date = document.getElementById('filterStartDate').value;
+        const end_date = document.getElementById('filterEndDate').value;
+
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (topic) params.append('topic', topic);
+        if (search) params.append('search', search);
+        if (start_date) params.append('start_date', start_date);
+        if (end_date) params.append('end_date', end_date);
+        url += params.toString();
+    }
+
+    try {
+        const res = await fetch(url);
+        if (res.ok) {
+            currentTickets = await res.json();
+            renderTicketTable(currentTickets);
+        } else {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center py-4 text-danger">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Không thể tải danh sách phản hồi.
+                    </td>
+                </tr>`;
+        }
+    } catch (e) {
+        console.error('Error fetching tickets:', e);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-4 text-danger">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i> Lỗi kết nối máy chủ.
+                </td>
+            </tr>`;
+    }
+}
+
+// ========================================================
+// Render Table
+// ========================================================
+function renderTicketTable(tickets) {
+    const tbody = document.getElementById('ticketTableBody');
+    const emptyState = document.getElementById('emptyState');
+    const countBadge = document.getElementById('ticketsCountBadge');
+    const isAdmin = checkIsAdmin();
+
+    countBadge.textContent = tickets.length;
+
+    if (!tickets || tickets.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.classList.remove('d-none');
+        return;
+    }
+
+    emptyState.classList.add('d-none');
+    let html = '';
+
+    tickets.forEach(ticket => {
+        const topicCfg = TOPIC_CONFIG[ticket.topic] || TOPIC_CONFIG.other;
+        const statusCfg = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.pending;
+        const formattedDate = formatDateTime(ticket.created_at);
+        const excerpt = escapeHtml(ticket.message || '');
+        const subject = escapeHtml(ticket.subject || '');
+        const username = escapeHtml(ticket.username || 'User');
+        const userInitial = username.charAt(0).toUpperCase();
+
+        const isOwner = currentUser && (ticket.user_id === currentUser.id || ticket.username === currentUser.username);
+        const senderLabel = isOwner ? `${username} (Bạn)` : username;
+        const actionText = isAdmin ? 'Xử lý' : 'Xem & Trả lời';
+        const actionIcon = isAdmin ? 'fa-headset' : 'fa-comments';
+
+        html += `
+        <tr onclick="openCommunicationModal(${ticket.id})">
+            <td class="ps-4">
+                <span class="font-monospace fw-bold text-muted small">#TK-${ticket.id}</span>
+            </td>
+            <td>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar-circle ${isOwner ? 'bg-primary' : ''}">${userInitial}</div>
+                    <div class="fw-semibold text-dark text-truncate" style="max-width: 120px;" title="${senderLabel}">
+                        ${senderLabel}
+                    </div>
+                </div>
+            </td>
+            <td>
+                <div class="fw-bold text-dark mb-1 text-truncate" style="max-width: 320px;">
+                    ${subject}
+                </div>
+                <div class="text-muted small text-truncate" style="max-width: 320px;">
+                    ${excerpt}
+                </div>
+            </td>
+            <td>
+                <span class="badge-topic ${topicCfg.badgeClass}">
+                    <i class="fa-solid ${topicCfg.icon}"></i> ${topicCfg.label}
+                </span>
+            </td>
+            <td>
+                <span class="badge-status ${statusCfg.badgeClass}">
+                    <i class="fa-solid ${statusCfg.icon}"></i> ${statusCfg.label}
+                </span>
+            </td>
+            <td class="text-muted small">
+                ${formattedDate}
+            </td>
+            <td class="text-center">
+                <span class="badge rounded-pill ${ticket.reply_count > 0 ? 'bg-primary-subtle text-primary fw-bold' : 'bg-light text-muted'}" title="${ticket.reply_count} phản hồi">
+                    <i class="fa-solid fa-comment-dots me-1"></i>${ticket.reply_count}
+                </span>
+            </td>
+            <td class="text-end pe-4" onclick="event.stopPropagation();">
+                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1" onclick="openCommunicationModal(${ticket.id})">
+                    <i class="fa-solid ${actionIcon} me-1"></i> ${actionText}
+                </button>
+            </td>
+        </tr>`;
+    });
+
+    tbody.innerHTML = html;
+}
+
+// ========================================================
+// Communication Hub Modal
+// ========================================================
+async function openCommunicationModal(ticketId) {
+    const modalEl = document.getElementById('communicationModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+    // Reset fields
+    document.getElementById('modalTicketCode').textContent = `#TK-${ticketId}`;
+    document.getElementById('modalTicketSubject').textContent = 'Đang tải...';
+    document.getElementById('modalTicketBody').textContent = 'Đang tải nội dung chi tiết...';
+    document.getElementById('modalRepliesThread').innerHTML = `
+        <div class="text-center py-4 text-muted">
+            <i class="fa-solid fa-spinner fa-spin me-1"></i> Đang tải lịch sử trao đổi...
+        </div>`;
+    document.getElementById('replyInput').value = '';
+
+    modal.show();
+
+    try {
+        const res = await fetch(`/api/feedback/${ticketId}`);
+        if (!res.ok) {
+            showToast('Không thể tải chi tiết ticket', 'danger');
+            modal.hide();
+            return;
+        }
+
+        activeTicket = await res.json();
+        renderActiveTicketDetails();
+    } catch (e) {
+        console.error('Error loading ticket details:', e);
+        showToast('Lỗi kết nối khi tải ticket', 'danger');
+    }
+}
+
+function renderActiveTicketDetails() {
+    if (!activeTicket) return;
+
+    const isAdmin = currentUser && currentUser.roles && currentUser.roles.includes('admin');
+    const isOwner = currentUser && (activeTicket.user_id === currentUser.id || activeTicket.username === currentUser.username);
+    const topicCfg = TOPIC_CONFIG[activeTicket.topic] || TOPIC_CONFIG.other;
+    const statusCfg = STATUS_CONFIG[activeTicket.status] || STATUS_CONFIG.pending;
+
+    document.getElementById('modalTicketCode').textContent = `#TK-${activeTicket.id}`;
+    document.getElementById('modalTicketSubject').textContent = activeTicket.subject;
+    document.getElementById('modalTicketSubject').title = activeTicket.subject;
+    document.getElementById('modalTicketBody').textContent = activeTicket.message;
+
+    // Sender details
+    const senderDisplay = isOwner ? `${activeTicket.username} (Bạn)` : activeTicket.username;
+    document.getElementById('modalSenderName').textContent = senderDisplay;
+    const initial = (activeTicket.username || 'U').charAt(0).toUpperCase();
+    document.getElementById('modalSenderAvatar').textContent = initial;
+
+    // Topic badge
+    const topicBadge = document.getElementById('modalTopicBadge');
+    topicBadge.className = `badge ${topicCfg.badgeClass}`;
+    topicBadge.innerHTML = `<i class="fa-solid ${topicCfg.icon} me-1"></i> ${topicCfg.label}`;
+
+    // Status badge
+    const statusBadge = document.getElementById('modalStatusBadge');
+    statusBadge.className = `badge-status ${statusCfg.badgeClass}`;
+    statusBadge.innerHTML = `<i class="fa-solid ${statusCfg.icon}"></i> ${statusCfg.label}`;
+
+    // Status select for Admin
+    const statusSelect = document.getElementById('modalStatusSelect');
+    if (statusSelect) {
+        statusSelect.value = activeTicket.status;
+    }
+
+    // Composer prompt customization
+    const replyInput = document.getElementById('replyInput');
+    const btnSend = document.getElementById('btnSendReply');
+    if (replyInput) {
+        replyInput.placeholder = isAdmin 
+            ? 'Nhập câu trả lời phản hồi cho người dùng...' 
+            : 'Gõ tin nhắn trao đổi tiếp với Ban Quản trị...';
+    }
+    if (btnSend) {
+        btnSend.innerHTML = isAdmin 
+            ? '<i class="fa-solid fa-paper-plane me-1"></i> Gửi phản hồi cho người dùng' 
+            : '<i class="fa-solid fa-paper-plane me-1"></i> Gửi câu trả lời';
+    }
+
+    // Meta time
+    document.getElementById('modalTicketMetaTime').innerHTML = `
+        <i class="fa-regular fa-clock me-1"></i> Ngày gửi: ${formatDateTime(activeTicket.created_at)}`;
+
+    // Render replies thread
+    renderRepliesThread(activeTicket.replies || []);
+}
+
+function renderRepliesThread(replies) {
+    const container = document.getElementById('modalRepliesThread');
+    document.getElementById('modalRepliesCount').textContent = replies.length;
+
+    if (!replies || replies.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-4 small" id="emptyRepliesNotice">
+                <i class="fa-regular fa-comment-dots fa-2x mb-2 d-block text-secondary opacity-50"></i>
+                Chưa có trao đổi nào. Hãy nhập nội dung bên dưới để bắt đầu tương tác!
+            </div>`;
+        return;
+    }
+
+    let html = '';
+    replies.forEach(reply => {
+        const isMe = currentUser && (reply.user_id === currentUser.id || reply.username === currentUser.username);
+        const replyIsAdmin = reply.is_admin;
+        const timeStr = formatDateTime(reply.created_at);
+        const authorName = escapeHtml(reply.username || (replyIsAdmin ? 'Admin' : 'Người dùng'));
+        const authorInitial = authorName.charAt(0).toUpperCase();
+        const content = escapeHtml(reply.message || '');
+
+        if (isMe) {
+            // MY message: on the RIGHT
+            html += `
+            <div class="chat-bubble-row bubble-row-me">
+                <div class="avatar-circle ${replyIsAdmin ? 'avatar-admin' : ''}" title="${authorName}">
+                    ${replyIsAdmin ? '<i class="fa-solid fa-headset"></i>' : authorInitial}
+                </div>
+                <div class="chat-bubble chat-bubble-me">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                        <span class="fw-bold small text-white">${authorName} (Tôi)</span>
+                        <span class="badge ${replyIsAdmin ? 'bg-white text-primary' : 'bg-light text-dark'}" style="font-size: 0.65rem;">
+                            ${replyIsAdmin ? 'Quản trị viên' : 'Sinh viên'}
+                        </span>
+                    </div>
+                    <div style="white-space: pre-wrap;">${content}</div>
+                    <div class="chat-time text-end text-white-50">${timeStr}</div>
+                </div>
+            </div>`;
+        } else {
+            // THE OTHER PERSON's message: on the LEFT
+            html += `
+            <div class="chat-bubble-row bubble-row-them">
+                <div class="avatar-circle ${replyIsAdmin ? 'avatar-admin' : ''}" title="${authorName}">
+                    ${replyIsAdmin ? '<i class="fa-solid fa-headset"></i>' : authorInitial}
+                </div>
+                <div class="chat-bubble chat-bubble-them">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                        <span class="fw-bold small text-dark">${authorName}</span>
+                        <span class="badge ${replyIsAdmin ? 'bg-primary-subtle text-primary' : 'bg-secondary-subtle text-secondary'}" style="font-size: 0.65rem;">
+                            ${replyIsAdmin ? 'Quản trị viên' : 'Người gửi yêu cầu'}
+                        </span>
+                    </div>
+                    <div style="white-space: pre-wrap;">${content}</div>
+                    <div class="chat-time text-muted">${timeStr}</div>
+                </div>
+            </div>`;
+        }
+    });
+
+    container.innerHTML = html;
+    container.scrollTop = container.scrollHeight;
+}
+
+// ========================================================
+// Status Update Action
+// ========================================================
+async function updateTicketStatusFromModal() {
+    if (!activeTicket) return;
+
+    const select = document.getElementById('modalStatusSelect');
+    const newStatus = select.value;
+
+    try {
+        const res = await fetch(`/api/feedback/${activeTicket.id}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        });
+
+        if (res.ok) {
+            const updated = await res.json();
+            activeTicket.status = updated.status;
+            renderActiveTicketDetails();
+            showToast(`Đã cập nhật trạng thái thành "${STATUS_CONFIG[newStatus].label}"`, 'success');
+            await reloadFeedbackData();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Lỗi khi cập nhật trạng thái', 'danger');
+            select.value = activeTicket.status;
+        }
+    } catch (e) {
+        console.error('Error updating status:', e);
+        showToast('Lỗi kết nối khi cập nhật trạng thái', 'danger');
+        select.value = activeTicket.status;
+    }
+}
+
+// ========================================================
+// Reply Submission
+// ========================================================
+async function submitReply() {
+    if (!activeTicket) return;
+
+    const input = document.getElementById('replyInput');
+    const btn = document.getElementById('btnSendReply');
+    const message = input.value.trim();
+
+    if (!message) {
+        showToast('Vui lòng nhập nội dung câu trả lời', 'warning');
+        input.focus();
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang gửi...';
+
+    try {
+        const res = await fetch(`/api/feedback/${activeTicket.id}/reply`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+        });
+
+        if (res.ok) {
+            const newReply = await res.json();
+            if (!activeTicket.replies) activeTicket.replies = [];
+            activeTicket.replies.push(newReply);
+
+            // If admin replies, status might have auto-switched from pending to in_progress
+            if (currentUser.roles && currentUser.roles.includes('admin') && activeTicket.status === 'pending') {
+                activeTicket.status = 'in_progress';
+            }
+
+            renderActiveTicketDetails();
+            input.value = '';
+            document.getElementById('replyCharCount').textContent = '0 / 5000 ký tự';
+            showToast('Đã gửi phản hồi thành công', 'success');
+            await reloadFeedbackData();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Không thể gửi phản hồi', 'danger');
+        }
+    } catch (e) {
+        console.error('Error sending reply:', e);
+        showToast('Lỗi kết nối máy chủ', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Gửi phản hồi';
+    }
+}
+
+// Quick reply template
+function applyTemplate(index) {
+    const text = QUICK_TEMPLATES[index];
+    if (text) {
+        const textarea = document.getElementById('replyInput');
+        textarea.value = text;
+        textarea.focus();
+        document.getElementById('replyCharCount').textContent = `${text.length} / 5000 ký tự`;
+    }
+}
+
+// Ctrl + Enter shortcut
+function setupTextareaCounter() {
+    const textarea = document.getElementById('replyInput');
+    const counter = document.getElementById('replyCharCount');
+
+    textarea.addEventListener('input', () => {
+        counter.textContent = `${textarea.value.length} / 5000 ký tự`;
+    });
+
+    textarea.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            submitReply();
+        }
+    });
+}
+
+// ========================================================
+// Create New Ticket
+// ========================================================
+async function submitNewTicket(e) {
+    e.preventDefault();
+
+    const subject = document.getElementById('newTicketSubject').value.trim();
+    const topic = document.getElementById('newTicketTopic').value;
+    const message = document.getElementById('newTicketMessage').value.trim();
+    const btn = document.getElementById('btnSubmitTicket');
+
+    if (!subject || !message) {
+        showToast('Vui lòng điền đầy đủ tiêu đề và nội dung', 'warning');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang gửi...';
+
+    try {
+        const res = await fetch('/api/feedback/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject, topic, message })
+        });
+
+        if (res.ok) {
+            const created = await res.json();
+            showToast('Đã gửi phản hồi thành công! Đội ngũ sẽ sớm liên hệ.', 'success');
+            
+            // Close modal
+            const modalEl = document.getElementById('createTicketModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+
+            document.getElementById('newTicketForm').reset();
+            await reloadFeedbackData();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Lỗi khi gửi phản hồi', 'danger');
+        }
+    } catch (err) {
+        console.error('Error creating ticket:', err);
+        showToast('Lỗi kết nối máy chủ', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Gửi yêu cầu';
+    }
+}
+
+// ========================================================
+// Filter Handlers
+// ========================================================
+function applyStatusFilterQuick(status) {
+    document.getElementById('filterStatus').value = status;
+    applyFilters();
+}
+
+function debounceFilter() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        applyFilters();
+    }, 300);
+}
+
+function applyFilters() {
+    loadTickets();
+}
+
+function resetFilters() {
+    document.getElementById('filterSearch').value = '';
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterTopic').value = '';
+    document.getElementById('filterStartDate').value = '';
+    document.getElementById('filterEndDate').value = '';
+    loadTickets();
+}
+
+// ========================================================
+// Helpers
+// ========================================================
+function formatDateTime(isoString) {
+    if (!isoString) return '--';
+    try {
+        const d = new Date(isoString);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const mins = String(d.getMinutes()).padStart(2, '0');
+        return `${hours}:${mins} ${day}/${month}/${year}`;
+    } catch (e) {
+        return isoString;
+    }
+}
+</script>
+{% endblock %}

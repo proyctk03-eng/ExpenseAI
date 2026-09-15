@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.config import ENVIRONMENT
 from src.database import init_db
-from src.api import advice, auth, categories, reports, transactions, web, dashboard
+from src.api import advice, auth, categories, reports, transactions, web, dashboard, feedback
 from src.utils.limiter import limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
@@ -75,6 +75,7 @@ app.include_router(transactions.router)
 app.include_router(reports.router)
 app.include_router(dashboard.router)
 app.include_router(advice.router)
+app.include_router(feedback.router)
 
 
 @app.get("/api")

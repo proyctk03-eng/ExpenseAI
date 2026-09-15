@@ -32,6 +32,8 @@ def stats_page(request: Request):
 def settings_page(request: Request):
     return templates.TemplateResponse(request=request, name="settings.html")
 
+@router.get("/feedback", response_class=HTMLResponse)
 @router.get("/support", response_class=HTMLResponse)
-def support_page(request: Request):
-    return templates.TemplateResponse(request=request, name="support.html")
+def feedback_page(request: Request):
+    return templates.TemplateResponse(request=request, name="feedback.html")
+

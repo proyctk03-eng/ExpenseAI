@@ -1,156 +1,97 @@
-"""
-Thiết lập kết nối cơ sở dữ liệu sử dụng SQLAlchemy 2.0.
+"""Script khởi tạo dữ liệu mẫu hệ thống Phản hồi (Feedback Tickets).
+Đúng chuẩn vai trò:
+- Người dùng (sinhvien, tran_thi_bich, le_hoang_nam, vu_mai_anh): Gửi phản hồi / yêu cầu hỗ trợ.
+- Quản trị viên (admin): Tiếp nhận, phân loại trạng thái, và trả lời phản hồi trực tiếp.
 """
 import os
-from collections.abc import Generator
+import sys
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
-from src.config import DATABASE_URL
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, project_root)
 
-class Base(DeclarativeBase):
-    pass
+from src.database import SessionLocal, init_db
+from src.models import FeedbackTicket, TicketReply, User, Role
+from src.utils.security import get_password_hash
 
-def get_db() -> Generator[Session, None, None]:
+def seed_correct_feedback():
+    init_db()
     db = SessionLocal()
     try:
-        yield db
-    finally:
-        db.close()
+        # Xóa toàn bộ tickets và replies cũ
+        db.query(TicketReply).delete()
+        db.query(FeedbackTicket).delete()
+        db.commit()
 
-def seed_default_rbac(db: Session) -> None:
-    from src.models.rbac import Role, Permission
-    permissions_data = [
-        {"name": "*:*", "resource": "all", "action": "all"},
-        {"name": "transaction:create", "resource": "transaction", "action": "create"},
-        {"name": "transaction:read", "resource": "transaction", "action": "read"},
-        {"name": "transaction:update", "resource": "transaction", "action": "update"},
-        {"name": "transaction:delete", "resource": "transaction", "action": "delete"},
-        {"name": "category:create", "resource": "category", "action": "create"},
-        {"name": "category:read", "resource": "category", "action": "read"},
-        {"name": "category:update", "resource": "category", "action": "update"},
-        {"name": "category:delete", "resource": "category", "action": "delete"},
-        {"name": "report:read", "resource": "report", "action": "read"}
-    ]
-    perm_map = {}
-    for p_data in permissions_data:
-        p = db.query(Permission).filter(Permission.name == p_data["name"]).first()
-        if not p:
-            p = Permission(**p_data)
-            db.add(p)
+        # Đảm bảo các roles tồn tại
+        admin_role = db.query(Role).filter(Role.name == "admin").first()
+        user_role = db.query(Role).filter(Role.name == "user").first()
+
+        # 1. Đảm bảo tài khoản Quản trị viên (Admin)
+        admin = db.query(User).filter(User.username == "admin").first()
+        if not admin:
+            admin = User(
+                username="admin",
+                email="admin@expenseai.com",
+                hashed_password=get_password_hash("admin123")
+            )
+            db.add(admin)
             db.flush()
-        perm_map[p_data["name"]] = p
 
-    roles_data = [
-        {"name": "admin", "description": "Toàn quyền hệ thống", "perms": ["*:*"]},
-        {"name": "user", "description": "Người dùng cơ bản", "perms": [
-            "transaction:create", "transaction:read", "transaction:update", "transaction:delete",
-            "category:create", "category:read", "category:update", "category:delete", "report:read"
-        ]},
-        {"name": "viewer", "description": "Chỉ xem", "perms": ["transaction:read", "category:read", "report:read"]}
-    ]
-    for r_data in roles_data:
-        r = db.query(Role).filter(Role.name == r_data["name"]).first()
-        if not r:
-            r = Role(name=r_data["name"], description=r_data["description"])
-            db.add(r)
-            db.flush()
-        r.permissions = [perm_map[p_name] for p_name in r_data["perms"] if p_name in perm_map]
-    db.commit()
+        if admin_role and admin_role not in admin.roles:
+            admin.roles.append(admin_role)
 
-def seed_default_categories(db: Session) -> None:
-    from src.models import Category
-    default_categories = [
-        {"name": "Lương", "type": "income"},
-        {"name": "Thưởng", "type": "income"},
-        {"name": "Thu nhập khác", "type": "income"},
-        {"name": "Ăn uống", "type": "expense"},
-        {"name": "Di chuyển", "type": "expense"},
-        {"name": "Học tập", "type": "expense"},
-        {"name": "Giải trí", "type": "expense"},
-        {"name": "Sinh hoạt", "type": "expense"},
-        {"name": "Mua sắm", "type": "expense"},
-        {"name": "Khác", "type": "expense"},
-    ]
-    for cat in default_categories:
-        exists = db.query(Category).filter(
-            Category.user_id.is_(None),
-            Category.name == cat["name"]
-        ).first()
-        if not exists:
-            db.add(Category(name=cat["name"], type=cat["type"], user_id=None))
-    db.commit()
-
-def seed_default_feedback(db: Session) -> None:
-    """Tự động khởi tạo dữ liệu mẫu cho hệ thống Phản hồi (Feedback Tickets)."""
-    from datetime import datetime, timedelta, timezone
-    from src.models import FeedbackTicket, TicketReply, User
-    from src.models.rbac import Role
-    from src.utils.security import get_password_hash
-
-    # 1. Đảm bảo role admin và user tồn tại
-    admin_role = db.query(Role).filter(Role.name == "admin").first()
-    user_role = db.query(Role).filter(Role.name == "user").first()
-
-    # 2. Đảm bảo tài khoản Quản trị viên (admin / admin123)
-    admin = db.query(User).filter(User.username == "admin").first()
-    if not admin:
-        admin = User(
-            username="admin",
-            email="admin@expenseai.com",
-            hashed_password=get_password_hash("admin123")
-        )
-        db.add(admin)
-        db.flush()
-    elif admin.email.endswith(".local"):
-        admin.email = "admin@expenseai.com"
-        db.flush()
-    if admin_role and admin_role not in admin.roles:
-        admin.roles.append(admin_role)
-
-    # 3. Đảm bảo tài khoản Sinh viên (sinhvien / 123456)
-    sinhvien = db.query(User).filter(User.username == "sinhvien").first()
-    if not sinhvien:
-        sinhvien = User(
-            username="sinhvien",
-            email="sinhvien@university.edu.vn",
-            hashed_password=get_password_hash("123456")
-        )
-        db.add(sinhvien)
-        db.flush()
-    if admin_role and admin_role in sinhvien.roles:
-        sinhvien.roles.remove(admin_role)
-    if user_role and user_role not in sinhvien.roles:
-        sinhvien.roles.append(user_role)
-
-    # 4. Đảm bảo người dùng mẫu khác
-    other_users_data = [
-        {"username": "tran_thi_bich", "email": "bich.tran@yahoo.com"},
-        {"username": "le_hoang_nam", "email": "nam.le@fpt.edu.vn"},
-        {"username": "vu_mai_anh", "email": "maianh.vu@gmail.com"},
-    ]
-    other_users = {}
-    for u_data in other_users_data:
-        u = db.query(User).filter(User.username == u_data["username"]).first()
-        if not u:
-            u = User(
-                username=u_data["username"],
-                email=u_data["email"],
+        # 2. Đảm bảo tài khoản Sinh viên (Người dùng chính)
+        sinhvien = db.query(User).filter(User.username == "sinhvien").first()
+        if not sinhvien:
+            sinhvien = User(
+                username="sinhvien",
+                email="sinhvien@university.edu.vn",
                 hashed_password=get_password_hash("123456")
             )
-            if user_role:
-                u.roles.append(user_role)
-            db.add(u)
+            db.add(sinhvien)
             db.flush()
-        other_users[u_data["username"]] = u
 
-    # 5. Nếu chưa có feedback tickets nào, tự động seed 6 phản hồi mẫu
-    if db.query(FeedbackTicket).count() == 0:
+        # Đảm bảo sinhvien CHỈ có role user (không có role admin)
+        if admin_role and admin_role in sinhvien.roles:
+            sinhvien.roles.remove(admin_role)
+        if user_role and user_role not in sinhvien.roles:
+            sinhvien.roles.append(user_role)
+
+        # 3. Tạo các người dùng khác (để phong phú bảng quản trị)
+        other_users_data = [
+            {"username": "tran_thi_bich", "email": "bich.tran@yahoo.com"},
+            {"username": "le_hoang_nam", "email": "nam.le@fpt.edu.vn"},
+            {"username": "vu_mai_anh", "email": "maianh.vu@gmail.com"},
+        ]
+        other_users = {}
+        for u_data in other_users_data:
+            u = db.query(User).filter(User.username == u_data["username"]).first()
+            if not u:
+                u = User(
+                    username=u_data["username"],
+                    email=u_data["email"],
+                    hashed_password=get_password_hash("123456")
+                )
+                if user_role:
+                    u.roles.append(user_role)
+                db.add(u)
+                db.flush()
+            other_users[u_data["username"]] = u
+
+        db.commit()
+
         now = datetime.now(timezone.utc)
+
+        # 4. Tạo danh sách phản hồi từ Người dùng gửi cho Admin
         sample_tickets = [
+            # --- Tickets do Sinh viên gửi ---
             {
                 "user": sinhvien,
                 "subject": "Không xuất được báo cáo chi tiêu dạng PDF trên di động",
@@ -200,6 +141,7 @@ def seed_default_feedback(db: Session) -> None:
                     }
                 ]
             },
+            # --- Tickets do người dùng khác gửi ---
             {
                 "user": other_users["tran_thi_bich"],
                 "subject": "Khiếu nại về tốc độ phản hồi của AI tư vấn vào giờ cao điểm",
@@ -266,20 +208,16 @@ def seed_default_feedback(db: Session) -> None:
                 )
                 db.add(rep)
 
-    db.commit()
+        db.commit()
+        print(f"✅ Đã tạo thành công {len(sample_tickets)} feedback tickets chuẩn:")
+        print("   - Người gửi (Users): sinhvien (3 tickets), tran_thi_bich, le_hoang_nam, vu_mai_anh")
+        print("   - Người tiếp nhận & xử lý (Admin): admin")
+    except Exception as e:
+        db.rollback()
+        print(f"Lỗi khi seed: {e}")
+        raise
+    finally:
+        db.close()
 
-def init_db() -> None:
-    from src.models import User, Category, Transaction, AIPrediction, UserMemoryRule  # noqa: F401
-    from src.models.rbac import Role, Permission, UserRole, RolePermission  # noqa: F401
-    from src.models.feedback import FeedbackTicket, TicketReply  # noqa: F401
-    Base.metadata.create_all(bind=engine)
-    with SessionLocal() as db:
-        try:
-            seed_default_rbac(db)
-            seed_default_categories(db)
-            seed_default_feedback(db)
-        except Exception:
-            db.rollback()
-
-
-
+if __name__ == "__main__":
+    seed_correct_feedback()

@@ -1,39 +1,168 @@
 {% extends "base.html" %}
 
-{% block content %}
-<div class="auth-wrapper">
-    <div class="glass-panel auth-card">
-        <div class="text-center mb-4">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">
-                <i class="fa-solid fa-wallet" style="color: var(--accent-blue);"></i>
+{% block layout %}
+<div class="auth-viewport">
+    <!-- Cột giới thiệu thương hiệu bên trái (Hero & Brand Showcase) -->
+    <div class="auth-hero-panel">
+        <div>
+            <div class="auth-brand-badge">
+                <i class="fa-solid fa-sparkles"></i> AI-Powered Personal Finance
             </div>
-            <h2 class="fw-bold mb-1">Đăng Nhập</h2>
-            <p class="text-muted">Chào mừng trở lại ExpenseAI</p>
+            <div class="auth-hero-brand">
+                <div class="brand-icon-box">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <span>Expense<span style="color: var(--accent-cyan);">AI</span></span>
+            </div>
+            <h1 class="auth-hero-headline">
+                Quản lý tài chính thông minh cùng <span class="text-gradient-cyan">Sức mạnh AI</span>
+            </h1>
+            <p class="auth-hero-desc">
+                Tối ưu hóa mọi dòng tiền thu chi, nhận diện danh mục tự động bằng mô hình AI và nhận lời khuyên tài chính cá nhân hóa mỗi ngày.
+            </p>
+
+            <div class="auth-hero-features">
+                <div class="auth-feature-item">
+                    <div class="auth-feature-icon">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <div class="auth-feature-text">
+                        <strong>Phân loại chi tiêu tức thì bằng AI</strong>
+                        <span>Nhập ngôn ngữ tự nhiên (vd: "ăn sáng bún bò 35k"), AI tự trích xuất và phân loại danh mục chuẩn xác.</span>
+                    </div>
+                </div>
+                <div class="auth-feature-item">
+                    <div class="auth-feature-icon">
+                        <i class="fa-solid fa-chart-pie"></i>
+                    </div>
+                    <div class="auth-feature-text">
+                        <strong>Báo cáo & Phân tích trực quan</strong>
+                        <span>Biểu đồ thời gian thực trực quan hóa tỷ trọng chi tiêu, cảnh báo ngân sách kịp thời.</span>
+                    </div>
+                </div>
+                <div class="auth-feature-item">
+                    <div class="auth-feature-icon">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div class="auth-feature-text">
+                        <strong>Bảo mật chuẩn Ngân hàng</strong>
+                        <span>Xác thực JWT HttpOnly Cookie, bảo vệ tấn công Brute-force và mã hóa bcrypt an toàn tuyệt đối.</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div id="errorMsg" class="alert alert-danger d-none" style="font-size: 0.9rem;"></div>
-
-        <form id="loginForm">
-            <div class="mb-3">
-                <label class="form-label">Tên đăng nhập</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
-                    <input type="text" class="form-control" id="username" placeholder="Nhập tên đăng nhập" required>
+        <!-- Interactive AI Preview Widget -->
+        <div>
+            <div class="auth-glass-widget">
+                <div class="auth-glass-header">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="pulse-dot"></span>
+                        <span class="auth-glass-tag"><i class="fa-solid fa-robot"></i> Trợ lý AI đang hoạt động</span>
+                    </div>
+                    <small style="color: #94A3B8; font-size: 0.75rem;">Hôm nay</small>
+                </div>
+                <div class="auth-glass-body">
+                    <div class="auth-glass-tx-info">
+                        <div class="auth-glass-tx-icon">
+                            <i class="fa-solid fa-utensils"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; font-size: 0.9rem; color: #FFFFFF;">Cơm trưa văn phòng & Cà phê</div>
+                            <div style="font-size: 0.75rem; color: #94A3B8;">Danh mục: Ăn uống • Vừa xong</div>
+                        </div>
+                    </div>
+                    <div style="font-family: var(--font-mono); font-weight: 700; color: #F43F5E; font-size: 0.95rem;">- 55.000 ₫</div>
+                </div>
+                <div class="auth-glass-ai-tip">
+                    <i class="fa-solid fa-lightbulb" style="color: #10B981; font-size: 0.95rem;"></i>
+                    <span><strong>AI Tips:</strong> "Chi tiêu ăn uống tuần này vẫn đạt 100% mục tiêu tiết kiệm. Tiếp tục phát huy nhé!"</span>
                 </div>
             </div>
-            <div class="mb-4">
-                <label class="form-label">Mật khẩu</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
-                    <input type="password" class="form-control" id="password" placeholder="Nhập mật khẩu" required>
+
+            <div class="auth-hero-footer">
+                <span>© 2026 ExpenseAI • Quản lý Tài chính Thông minh</span>
+                <span><i class="fa-solid fa-lock me-1"></i> SSL 256-bit Encryption</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cột form đăng nhập bên phải (Auth Form) -->
+    <div class="auth-form-panel">
+        <div class="auth-form-card">
+            <div class="text-center mb-4">
+                <div class="auth-badge-pill">
+                    <i class="fa-solid fa-circle-check text-primary me-1"></i> Hệ thống đã sẵn sàng
+                </div>
+                <h2 class="auth-form-title">Đăng Nhập</h2>
+                <p class="auth-form-subtitle">Chào mừng trở lại! Vui lòng nhập thông tin xác thực</p>
+            </div>
+
+            <!-- Hộp chọn nhanh tài khoản thử nghiệm -->
+            <div class="demo-accounts-box">
+                <div class="demo-accounts-title">
+                    <span><i class="fa-solid fa-bolt text-warning me-1"></i> Điền nhanh tài khoản mẫu:</span>
+                </div>
+                <div class="demo-pills-row">
+                    <button type="button" class="btn-demo-pill" onclick="fillDemo('sinhvien', '123456')" title="Dữ liệu mẫu 30 ngày của sinh viên">
+                        <i class="fa-solid fa-graduation-cap text-primary"></i> Sinh viên
+                    </button>
+                    <button type="button" class="btn-demo-pill" onclick="fillDemo('admin', 'admin123')" title="Tài khoản quản trị viên">
+                        <i class="fa-solid fa-user-shield text-danger"></i> Quản trị viên
+                    </button>
                 </div>
             </div>
-            <button type="submit" class="btn btn-glass w-100 mb-3">Đăng nhập</button>
-        </form>
 
-        <div class="text-center mt-2">
-            <span class="text-muted" style="font-size: 0.9rem;">Chưa có tài khoản?</span>
-            <a href="/register">Đăng ký ngay</a>
+            <div id="errorMsg" class="alert alert-danger d-none d-flex align-items-center gap-2 mb-3" style="font-size: 0.88rem; border-radius: 10px;">
+                <i class="fa-solid fa-circle-exclamation flex-shrink-0"></i>
+                <span id="errorText"></span>
+            </div>
+
+            <form id="loginForm">
+                <div class="auth-input-group">
+                    <label class="auth-label" for="username">Tên đăng nhập</label>
+                    <div class="auth-field-wrapper">
+                        <i class="fa-solid fa-user auth-field-icon"></i>
+                        <input type="text" class="auth-input" id="username" placeholder="Nhập username (vd: sinhvien)" required autocomplete="username">
+                    </div>
+                </div>
+
+                <div class="auth-input-group">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="auth-label mb-0" for="password">Mật khẩu</label>
+                        <a href="javascript:void(0)" onclick="handleForgotPassword()" class="auth-forgot-link">Quên mật khẩu?</a>
+                    </div>
+                    <div class="auth-field-wrapper">
+                        <i class="fa-solid fa-lock auth-field-icon"></i>
+                        <input type="password" class="auth-input" id="password" placeholder="Nhập mật khẩu" required autocomplete="current-password">
+                        <button type="button" class="auth-toggle-pwd" id="togglePasswordBtn" title="Hiện/Ẩn mật khẩu">
+                            <i class="fa-solid fa-eye" id="toggleIcon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="rememberMe" checked>
+                        <label class="form-check-label text-muted" for="rememberMe" style="font-size: 0.84rem; cursor: pointer;">
+                            Ghi nhớ tài khoản
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-auth-submit" id="submitBtn">
+                    <span id="btnText"><i class="fa-solid fa-arrow-right-to-bracket me-1"></i> Đăng nhập</span>
+                    <span id="btnSpinner" class="d-none"><i class="fa-solid fa-circle-notch fa-spin me-1"></i> Đang xác thực...</span>
+                </button>
+            </form>
+
+            <div class="auth-switch-text">
+                Chưa có tài khoản? <a href="/register" class="auth-switch-link">Đăng ký ngay</a>
+            </div>
+
+            <div class="text-center mt-4 pt-3 border-top" style="font-size: 0.75rem; color: #94A3B8;">
+                <i class="fa-solid fa-shield-halved text-success me-1"></i> Dữ liệu được bảo mật an toàn theo tiêu chuẩn OWASP
+            </div>
         </div>
     </div>
 </div>
@@ -41,11 +170,50 @@
 
 {% block scripts %}
 <script>
+// Toggle Password Visibility
+const toggleBtn = document.getElementById('togglePasswordBtn');
+const pwdInput = document.getElementById('password');
+const toggleIcon = document.getElementById('toggleIcon');
+
+toggleBtn.addEventListener('click', () => {
+    if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        pwdInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+});
+
+// Điền nhanh tài khoản mẫu
+function fillDemo(u, p) {
+    document.getElementById('username').value = u;
+    document.getElementById('password').value = p;
+    showToast(`Đã tự động điền tài khoản: ${u}`, 'primary');
+}
+
+// Xử lý quên mật khẩu
+function handleForgotPassword() {
+    showToast('Vui lòng liên hệ quản trị viên để được cấp lại mật khẩu!', 'warning');
+}
+
+// Xử lý submit Form Đăng Nhập
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username = document.getElementById('username').value;
+    const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
     const errorMsg = document.getElementById('errorMsg');
+    const errorText = document.getElementById('errorText');
+    const submitBtn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const btnSpinner = document.getElementById('btnSpinner');
+
+    errorMsg.classList.add('d-none');
+    submitBtn.disabled = true;
+    btnText.classList.add('d-none');
+    btnSpinner.classList.remove('d-none');
 
     try {
         const res = await fetch('/api/auth/login', {
@@ -56,17 +224,30 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 
         const data = await res.json();
         if (res.ok) {
-            window.location.href = '/';
+            if (data.access_token) {
+                localStorage.setItem('token', data.access_token);
+            }
+            showToast('Đăng nhập thành công! Đang chuyển hướng...', 'success');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 500);
         } else {
+            submitBtn.disabled = false;
+            btnText.classList.remove('d-none');
+            btnSpinner.classList.add('d-none');
+
             if (res.status === 429) {
-                showToast('Quá nhiều yêu cầu đăng nhập. Vui lòng thử lại sau.', 'danger');
+                showToast('Quá nhiều yêu cầu đăng nhập. Vui lòng thử lại sau ít phút.', 'danger');
             } else {
-                errorMsg.textContent = data.detail || 'Lỗi đăng nhập';
+                errorText.textContent = data.detail || 'Sai tên đăng nhập hoặc mật khẩu';
                 errorMsg.classList.remove('d-none');
             }
         }
     } catch (err) {
-        errorMsg.textContent = 'Không thể kết nối đến server';
+        submitBtn.disabled = false;
+        btnText.classList.remove('d-none');
+        btnSpinner.classList.add('d-none');
+        errorText.textContent = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng.';
         errorMsg.classList.remove('d-none');
     }
 });

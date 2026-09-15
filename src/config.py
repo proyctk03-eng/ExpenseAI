@@ -12,6 +12,7 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL") or "sqlite:///./expense_db.sqlite"
 SECRET_KEY = os.getenv("SECRET_KEY") or "expenseai_dev_secret_key_change_in_prod_9999"
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # --- Các biến môi trường có giá trị mặc định ---
 ALGORITHM = os.getenv("ALGORITHM", "HS256")

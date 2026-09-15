@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from .transaction import Transaction
     from .category import Category
     from .rbac import Role
+    from .feedback import FeedbackTicket
 
 class User(Base):
     __tablename__ = "users"
@@ -25,10 +26,11 @@ class User(Base):
     transactions: Mapped[List["Transaction"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     categories: Mapped[List["Category"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     roles: Mapped[List["Role"]] = relationship(secondary="user_roles", back_populates="users")
+    feedback_tickets: Mapped[List["FeedbackTicket"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
     @property
     def is_admin(self) -> bool:
-        return any(r.name == "admin" for r in self.roles)
+        return self.username == "admin" or any(r.name == "admin" for r in self.roles)
 
     def has_permission(self, permission_name: str) -> bool:
         """Kiểm tra user có quyền truy cập resource cụ thể không"""

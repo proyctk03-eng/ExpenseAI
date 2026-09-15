@@ -5,29 +5,47 @@ import logging
 import httpx
 from openai import OpenAI, APITimeoutError, APIConnectionError, RateLimitError
 
-from src.config import OPENAI_API_KEY
+from src.config import OPENAI_API_KEY, GEMINI_API_KEY
 
 logger = logging.getLogger(__name__)
 
 
 class AIAdviceService:
-    """Gọi OpenAI API để sinh lời khuyên tài chính."""
+    """Gọi Gemini hoặc OpenAI API để sinh lời khuyên tài chính."""
 
     def __init__(self):
-        self.is_available = bool(OPENAI_API_KEY and OPENAI_API_KEY != "mock-api-key-for-testing")
-        if self.is_available:
+        self.is_available = False
+        self.client = None
+        self.model = "gpt-3.5-turbo"
+
+        # Ưu tiên sử dụng Google Gemini nếu có GEMINI_API_KEY
+        if GEMINI_API_KEY and GEMINI_API_KEY != "mock-api-key-for-testing":
+            try:
+                self.client = OpenAI(
+                    api_key=GEMINI_API_KEY,
+                    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+                    http_client=httpx.Client(timeout=15.0),
+                    max_retries=2,
+                )
+                self.model = "gemini-3.6-flash"
+                self.is_available = True
+                logger.info("AIAdviceService khởi tạo thành công với mô hình Google Gemini (%s)", self.model)
+            except Exception as e:
+                logger.warning("Không thể khởi tạo Gemini client trong AIAdviceService: %s", e)
+
+        # Fallback sang OpenAI nếu có OPENAI_API_KEY hợp lệ
+        if not self.is_available and OPENAI_API_KEY and OPENAI_API_KEY != "mock-api-key-for-testing":
             try:
                 self.client = OpenAI(
                     api_key=OPENAI_API_KEY,
                     http_client=httpx.Client(timeout=15.0),
                     max_retries=2,
                 )
+                self.model = "gpt-3.5-turbo"
+                self.is_available = True
+                logger.info("AIAdviceService khởi tạo thành công với OpenAI (%s)", self.model)
             except Exception as e:
                 logger.warning("Không thể khởi tạo OpenAI trong AIAdviceService: %s", e)
-                self.is_available = False
-                self.client = None
-        else:
-            self.client = None
 
     def get_advice(self, summary_data: dict) -> str:
         """Phân tích dữ liệu chi tiêu và đưa ra lời khuyên."""
@@ -47,7 +65,7 @@ class AIAdviceService:
         )
         try:
             response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model=self.model,
                 messages=[
                     {"role": "system", "content": prompt},
                     {"role": "user", "content": f"Dữ liệu 3 tháng qua: {json.dumps(summary_data, ensure_ascii=False)}"},

@@ -83,7 +83,7 @@ def init_rbac():
         if not admin_user:
             admin_user = User(
                 username="admin",
-                email="admin@expenseai.local",
+                email="admin@expenseai.com",
                 hashed_password=get_password_hash("admin123")
             )
             db.add(admin_user)

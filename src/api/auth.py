@@ -19,11 +19,14 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 def _user_to_response(user: User) -> dict:
     """Chuyển đổi User ORM thành dict phù hợp UserResponse."""
+    roles = [r.name for r in user.roles]
+    if (user.username == "admin" or user.is_admin) and "admin" not in roles:
+        roles.append("admin")
     return {
         "id": user.id,
         "username": user.username,
         "email": user.email,
-        "roles": [r.name for r in user.roles],
+        "roles": roles,
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
 

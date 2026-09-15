@@ -58,7 +58,7 @@ def create_transaction(
         ai_pred_data = None
 
         if not category_id:
-            result = ai_classifier.classify(tx_in.description)
+            result = ai_classifier.classify(tx_in.description, user_id=current_user.id, db=db)
             pred_cat_name = result["category"]
             pred_type = result.get("type", "expense")
 
@@ -112,7 +112,7 @@ def update_transaction(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("transaction:update")),
 ):
-    """Cập nhật giao dịch."""
+    """Cập nhật giao dịch và ghi nhận kinh nghiệm học hỏi (Agent Memory)."""
     if current_user.has_permission("*:*"):
         tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
     else:
@@ -120,6 +120,30 @@ def update_transaction(
 
     if not tx:
         raise HTTPException(status_code=404, detail="Không tìm thấy giao dịch")
+
+    # Học hỏi từ người dùng: Nếu user đổi danh mục khác danh mục cũ, ghi nhận vào UserMemoryRule
+    if tx_in.category_id is not None and tx_in.category_id != tx.category_id:
+        try:
+            from src.models.user_memory_rule import UserMemoryRule
+            keyword = (tx_in.description or tx.description or "").strip().lower()
+            if len(keyword) >= 2:
+                rule = db.query(UserMemoryRule).filter(
+                    UserMemoryRule.user_id == current_user.id,
+                    UserMemoryRule.keyword_pattern == keyword
+                ).first()
+                if rule:
+                    rule.category_id = tx_in.category_id
+                    rule.frequency += 1
+                else:
+                    new_rule = UserMemoryRule(
+                        user_id=current_user.id,
+                        keyword_pattern=keyword,
+                        category_id=tx_in.category_id,
+                        frequency=1
+                    )
+                    db.add(new_rule)
+        except Exception as e:
+            logger.warning("Không thể lưu kinh nghiệm Agent Memory: %s", e)
 
     if tx_in.amount is not None:
         tx.amount = tx_in.amount

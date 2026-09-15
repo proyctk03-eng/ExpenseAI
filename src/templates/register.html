@@ -1,46 +1,141 @@
 {% extends "base.html" %}
 
-{% block content %}
-<div class="auth-wrapper">
-    <div class="glass-panel auth-card">
-        <div class="text-center mb-4">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">
-                <i class="fa-solid fa-wallet" style="color: var(--accent-blue);"></i>
+{% block layout %}
+<div class="auth-viewport">
+    <!-- Cột giới thiệu thương hiệu bên trái (Hero & Brand Showcase) -->
+    <div class="auth-hero-panel">
+        <div>
+            <div class="auth-brand-badge">
+                <i class="fa-solid fa-sparkles"></i> AI-Powered Personal Finance
             </div>
-            <h2 class="fw-bold mb-1">Đăng Ký</h2>
-            <p class="text-muted">Bắt đầu quản lý tài chính thông minh</p>
+            <div class="auth-hero-brand">
+                <div class="brand-icon-box">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <span>Expense<span style="color: var(--accent-cyan);">AI</span></span>
+            </div>
+            <h1 class="auth-hero-headline">
+                Bắt đầu làm chủ tài chính cùng <span class="text-gradient-cyan">ExpenseAI</span>
+            </h1>
+            <p class="auth-hero-desc">
+                Tạo tài khoản miễn phí chỉ trong 30 giây để tự động hóa ghi chép thu chi và nhận trợ lý AI phân tích tài chính cá nhân.
+            </p>
+
+            <div class="auth-hero-features">
+                <div class="auth-feature-item">
+                    <div class="auth-feature-icon">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <div class="auth-feature-text">
+                        <strong>Khởi tạo sẵn 8 danh mục thu chi thiết yếu</strong>
+                        <span>Hệ thống tự động kích hoạt các danh mục Ăn uống, Học tập, Di chuyển, Lương, Sinh hoạt...</span>
+                    </div>
+                </div>
+                <div class="auth-feature-item">
+                    <div class="auth-feature-icon">
+                        <i class="fa-solid fa-brain"></i>
+                    </div>
+                    <div class="auth-feature-text">
+                        <strong>Trợ lý AI tư vấn tài chính riêng</strong>
+                        <span>Nhận cảnh báo chi tiêu vượt ngưỡng và đề xuất kế hoạch tiết kiệm phù hợp với bạn.</span>
+                    </div>
+                </div>
+                <div class="auth-feature-item">
+                    <div class="auth-feature-icon">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <div class="auth-feature-text">
+                        <strong>Bảo mật & Quyền riêng tư cao cấp</strong>
+                        <span>Mọi mật khẩu đều được băm bằng thuật toán bcrypt. Bạn toàn quyền kiểm soát dữ liệu tài chính của mình.</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div id="errorMsg" class="alert alert-danger d-none" style="font-size: 0.9rem;"></div>
+        <div>
+            <div class="auth-glass-widget">
+                <div class="auth-glass-header">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="pulse-dot"></span>
+                        <span class="auth-glass-tag"><i class="fa-solid fa-user-plus"></i> Đăng ký thành viên mới</span>
+                    </div>
+                    <small style="color: #94A3B8; font-size: 0.75rem;">100% Miễn phí</small>
+                </div>
+                <div class="auth-glass-ai-tip mt-2">
+                    <i class="fa-solid fa-circle-check" style="color: #10B981; font-size: 1.1rem;"></i>
+                    <span>Không yêu cầu thẻ ngân hàng. Đăng ký ngay để trải nghiệm đầy đủ các tính năng AI.</span>
+                </div>
+            </div>
 
-        <form id="registerForm">
-            <div class="mb-3">
-                <label class="form-label">Tên đăng nhập</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
-                    <input type="text" class="form-control" id="username" placeholder="Nhập tên đăng nhập" required>
-                </div>
+            <div class="auth-hero-footer">
+                <span>© 2026 ExpenseAI • Quản lý Tài chính Thông minh</span>
+                <span><i class="fa-solid fa-shield-halved me-1"></i> Chuẩn an toàn OWASP</span>
             </div>
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
-                    <input type="email" class="form-control" id="email" placeholder="Nhập email" required>
-                </div>
-            </div>
-            <div class="mb-4">
-                <label class="form-label">Mật khẩu</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
-                    <input type="password" class="form-control" id="password" placeholder="Nhập mật khẩu (ít nhất 6 ký tự)" required>
-                </div>
-            </div>
-            <button type="submit" class="btn btn-glass w-100 mb-3">Đăng ký</button>
-        </form>
+        </div>
+    </div>
 
-        <div class="text-center mt-2">
-            <span class="text-muted" style="font-size: 0.9rem;">Đã có tài khoản?</span>
-            <a href="/login">Đăng nhập</a>
+    <!-- Cột form đăng ký bên phải (Auth Form) -->
+    <div class="auth-form-panel">
+        <div class="auth-form-card">
+            <div class="text-center mb-4">
+                <div class="auth-badge-pill">
+                    <i class="fa-solid fa-user-plus me-1 text-primary"></i> Tạo tài khoản mới
+                </div>
+                <h2 class="auth-form-title">Đăng Ký</h2>
+                <p class="auth-form-subtitle">Điền thông tin để bắt đầu hành trình quản lý tài chính</p>
+            </div>
+
+            <div id="errorMsg" class="alert alert-danger d-none d-flex align-items-center gap-2 mb-3" style="font-size: 0.88rem; border-radius: 10px;">
+                <i class="fa-solid fa-circle-exclamation flex-shrink-0"></i>
+                <span id="errorText"></span>
+            </div>
+
+            <form id="registerForm">
+                <div class="auth-input-group">
+                    <label class="auth-label" for="username">Tên đăng nhập</label>
+                    <div class="auth-field-wrapper">
+                        <i class="fa-solid fa-user auth-field-icon"></i>
+                        <input type="text" class="auth-input" id="username" placeholder="Ví dụ: myusername" required autocomplete="username" minlength="3">
+                    </div>
+                </div>
+
+                <div class="auth-input-group">
+                    <label class="auth-label" for="email">Địa chỉ Email</label>
+                    <div class="auth-field-wrapper">
+                        <i class="fa-solid fa-envelope auth-field-icon"></i>
+                        <input type="email" class="auth-input" id="email" placeholder="name@example.com" required autocomplete="email">
+                    </div>
+                </div>
+
+                <div class="auth-input-group mb-4">
+                    <label class="auth-label" for="password">Mật khẩu</label>
+                    <div class="auth-field-wrapper">
+                        <i class="fa-solid fa-lock auth-field-icon"></i>
+                        <input type="password" class="auth-input" id="password" placeholder="Tối thiểu 6 ký tự" required autocomplete="new-password" minlength="6">
+                        <button type="button" class="auth-toggle-pwd" id="togglePasswordBtn" title="Hiện/Ẩn mật khẩu">
+                            <i class="fa-solid fa-eye" id="toggleIcon"></i>
+                        </button>
+                    </div>
+                    <!-- Thanh đo độ mạnh mật khẩu -->
+                    <div class="pwd-strength-bar">
+                        <div class="pwd-strength-fill" id="pwdStrengthFill"></div>
+                    </div>
+                    <div class="pwd-strength-text" id="pwdStrengthText">Độ mạnh mật khẩu</div>
+                </div>
+
+                <button type="submit" class="btn-auth-submit" id="submitBtn">
+                    <span id="btnText"><i class="fa-solid fa-user-plus me-1"></i> Đăng ký tài khoản</span>
+                    <span id="btnSpinner" class="d-none"><i class="fa-solid fa-circle-notch fa-spin me-1"></i> Đang khởi tạo...</span>
+                </button>
+            </form>
+
+            <div class="auth-switch-text">
+                Đã có tài khoản? <a href="/login" class="auth-switch-link">Đăng nhập ngay</a>
+            </div>
+
+            <div class="text-center mt-4 pt-3 border-top" style="font-size: 0.75rem; color: #94A3B8;">
+                Bằng cách đăng ký, bạn đồng ý với Điều khoản sử dụng & Chính sách bảo mật của ExpenseAI.
+            </div>
         </div>
     </div>
 </div>
@@ -48,12 +143,74 @@
 
 {% block scripts %}
 <script>
+// Toggle Password Visibility
+const toggleBtn = document.getElementById('togglePasswordBtn');
+const pwdInput = document.getElementById('password');
+const toggleIcon = document.getElementById('toggleIcon');
+
+toggleBtn.addEventListener('click', () => {
+    if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        pwdInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+});
+
+// Password Strength Meter
+const strengthFill = document.getElementById('pwdStrengthFill');
+const strengthText = document.getElementById('pwdStrengthText');
+
+pwdInput.addEventListener('input', () => {
+    const val = pwdInput.value;
+    let score = 0;
+    if (val.length >= 6) score++;
+    if (val.length >= 10) score++;
+    if (/[A-Z]/.test(val)) score++;
+    if (/[0-9]/.test(val)) score++;
+    if (/[^A-Za-z0-9]/.test(val)) score++;
+
+    if (val.length === 0) {
+        strengthFill.style.width = '0%';
+        strengthText.textContent = 'Độ mạnh mật khẩu';
+        strengthText.style.color = '#64748B';
+    } else if (score <= 2) {
+        strengthFill.style.width = '33%';
+        strengthFill.style.backgroundColor = '#F43F5E';
+        strengthText.textContent = 'Mật khẩu yếu';
+        strengthText.style.color = '#F43F5E';
+    } else if (score <= 3) {
+        strengthFill.style.width = '66%';
+        strengthFill.style.backgroundColor = '#F59E0B';
+        strengthText.textContent = 'Mật khẩu trung bình';
+        strengthText.style.color = '#F59E0B';
+    } else {
+        strengthFill.style.width = '100%';
+        strengthFill.style.backgroundColor = '#10B981';
+        strengthText.textContent = 'Mật khẩu mạnh';
+        strengthText.style.color = '#10B981';
+    }
+});
+
+// Submit Form Đăng Ký
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username = document.getElementById('username').value;
-    const email = document.getElementById('email').value;
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     const errorMsg = document.getElementById('errorMsg');
+    const errorText = document.getElementById('errorText');
+    const submitBtn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const btnSpinner = document.getElementById('btnSpinner');
+
+    errorMsg.classList.add('d-none');
+    submitBtn.disabled = true;
+    btnText.classList.add('d-none');
+    btnSpinner.classList.remove('d-none');
 
     try {
         const res = await fetch('/api/auth/register', {
@@ -64,14 +221,22 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
 
         const data = await res.json();
         if (res.ok) {
-            alert('Đăng ký thành công! Vui lòng đăng nhập.');
-            window.location.href = '/login';
+            showToast('Đăng ký thành công! Đang chuyển hướng sang Đăng nhập...', 'success');
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 1000);
         } else {
-            errorMsg.textContent = data.detail || 'Lỗi đăng ký';
+            submitBtn.disabled = false;
+            btnText.classList.remove('d-none');
+            btnSpinner.classList.add('d-none');
+            errorText.textContent = data.detail || 'Lỗi đăng ký tài khoản';
             errorMsg.classList.remove('d-none');
         }
     } catch (err) {
-        errorMsg.textContent = 'Không thể kết nối đến server';
+        submitBtn.disabled = false;
+        btnText.classList.remove('d-none');
+        btnSpinner.classList.add('d-none');
+        errorText.textContent = 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau.';
         errorMsg.classList.remove('d-none');
     }
 });

@@ -14,9 +14,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260915">
 </head>
 <body>
+    {% block layout %}
     <div class="app-wrapper">
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
@@ -46,8 +47,8 @@
                     </a>
                 </li>
                 <li class="nav__item">
-                    <a class="nav__link" href="/support" id="nav-support">
-                        <i class="fa-solid fa-circle-question"></i> Hỗ trợ
+                    <a class="nav__link" href="/feedback" id="nav-support">
+                        <i class="fa-solid fa-headset"></i> <span id="nav-support-text">Xử lý phản hồi</span>
                     </a>
                 </li>
             </ul>
@@ -82,6 +83,7 @@
             </footer>
         </div>
     </div>
+    {% endblock %}
 
     <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -115,27 +117,48 @@
             toast.show();
         }
 
-        // Thay thế fetch API global để tự động xử lý token expiration
+        // Thay thế fetch API global để tự động xử lý token expiration & gắn token dự phòng
         const originalFetch = window.fetch;
-        window.fetch = async function() {
-            let response = await originalFetch.apply(this, arguments);
-            if (response.status === 401 && !arguments[0].includes('/auth/login') && !arguments[0].includes('/auth/refresh')) {
+        window.fetch = async function(resource, init = {}) {
+            // Tự động gắn Authorization Bearer từ localStorage nếu có
+            const token = localStorage.getItem('token');
+            if (token && typeof resource === 'string' && resource.startsWith('/api/') && !resource.includes('/auth/login') && !resource.includes('/auth/register')) {
+                init = init || {};
+                init.headers = init.headers || {};
+                if (init.headers instanceof Headers) {
+                    if (!init.headers.has('Authorization')) init.headers.set('Authorization', 'Bearer ' + token);
+                } else if (Array.isArray(init.headers)) {
+                    if (!init.headers.some(([k]) => k.toLowerCase() === 'authorization')) init.headers.push(['Authorization', 'Bearer ' + token]);
+                } else {
+                    if (!init.headers['Authorization'] && !init.headers['authorization']) init.headers['Authorization'] = 'Bearer ' + token;
+                }
+            }
+
+            let response = await originalFetch(resource, init);
+            if (response.status === 401 && typeof resource === 'string' && !resource.includes('/auth/login') && !resource.includes('/auth/refresh')) {
                 // Thử gọi refresh token
                 try {
                     const refreshRes = await originalFetch('/api/auth/refresh', {
                         method: 'POST'
                     });
                     if (refreshRes.ok) {
-                        // Gọi lại request ban đầu (cookie đã được tự động lưu)
-                        return originalFetch.apply(this, arguments);
-                    } else {
-                        // Refresh thất bại, redirect ra trang đăng nhập
-                        window.location.href = '/login';
-                        return response;
+                        const refreshData = await refreshRes.json();
+                        if (refreshData && refreshData.access_token) {
+                            localStorage.setItem('token', refreshData.access_token);
+                            // Cập nhật header với token mới
+                            if (init.headers instanceof Headers) {
+                                init.headers.set('Authorization', 'Bearer ' + refreshData.access_token);
+                            } else if (Array.isArray(init.headers)) {
+                                const idx = init.headers.findIndex(([k]) => k.toLowerCase() === 'authorization');
+                                if (idx !== -1) init.headers[idx] = ['Authorization', 'Bearer ' + refreshData.access_token];
+                                else init.headers.push(['Authorization', 'Bearer ' + refreshData.access_token]);
+                            } else if (init.headers) {
+                                init.headers['Authorization'] = 'Bearer ' + refreshData.access_token;
+                            }
+                        }
+                        return originalFetch(resource, init);
                     }
-                } catch (e) {
-                    window.location.href = '/login';
-                }
+                } catch (e) {}
             }
             return response;
         };
@@ -164,28 +187,32 @@
                 document.getElementById('nav-stats')?.classList.add('active');
             } else if (path === '/settings') {
                 document.getElementById('nav-settings')?.classList.add('active');
-            } else if (path === '/support') {
+            } else if (path === '/support' || path === '/feedback') {
                 document.getElementById('nav-support')?.classList.add('active');
             }
-        } else {
-            // Chưa đăng nhập: ẩn sidebar, footer, fix layout
-            if (sidebar) sidebar.style.display = 'none';
-            const topbar = document.getElementById('mobile-topbar');
-            if (topbar) topbar.style.display = 'none';
-            const footer = document.querySelector('.app-footer');
-            if (footer) footer.style.display = 'none';
-            const mainArea = document.querySelector('.main-area');
-            if (mainArea) mainArea.style.marginLeft = '0';
+
+            // Đồng bộ nhãn Sidebar theo vai trò người dùng (Admin: Xử lý phản hồi, User: Phản hồi & Hỗ trợ)
+            fetch('/api/auth/me').then(r => {
+                if (r.ok) return r.json();
+                return null;
+            }).then(u => {
+                if (u && u.roles) {
+                    const label = document.getElementById('nav-support-text');
+                    if (label) {
+                        label.textContent = u.roles.includes('admin') ? 'Xử lý phản hồi' : 'Phản hồi & Hỗ trợ';
+                    }
+                }
+            }).catch(() => {});
         }
 
         // Hamburger toggle
         hamburgerBtn?.addEventListener('click', () => {
-            sidebar.classList.toggle('sidebar--open');
-            overlay.classList.toggle('sidebar-overlay--active');
+            sidebar?.classList.toggle('sidebar--open');
+            overlay?.classList.toggle('sidebar-overlay--active');
         });
         overlay?.addEventListener('click', () => {
-            sidebar.classList.remove('sidebar--open');
-            overlay.classList.remove('sidebar-overlay--active');
+            sidebar?.classList.remove('sidebar--open');
+            overlay?.classList.remove('sidebar-overlay--active');
         });
 
         // Global logout function
