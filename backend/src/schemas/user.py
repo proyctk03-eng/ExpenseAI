@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class UserCreate(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50)
+    username: str = Field(..., min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
 
@@ -46,7 +46,7 @@ class Token(BaseModel):
 
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
-    username: Optional[str] = None
+    username: Optional[str] = Field(None, min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")
 
 
 class PasswordChange(BaseModel):

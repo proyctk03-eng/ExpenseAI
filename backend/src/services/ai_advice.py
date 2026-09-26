@@ -10,6 +10,7 @@ import httpx
 from openai import OpenAI, APITimeoutError, APIConnectionError, RateLimitError
 
 from src.config import GEMINI_API_KEY, OPENAI_API_KEY
+from src.utils.ai_key_manager import gemini_key_manager
 
 logger = logging.getLogger(__name__)
 
@@ -17,28 +18,24 @@ logger = logging.getLogger(__name__)
 import asyncio
 
 class AIAdviceService:
-    """Gọi Gemini hoặc OpenAI API để sinh lời khuyên tài chính, kèm bộ nhớ đệm Redis và Fallback thông minh."""
+    """Gọi Gemini hoặc OpenAI API để sinh lời khuyên tài chính, kèm bộ nhớ đệm Redis, Failover Multi-Key và Fallback thông minh."""
 
     def __init__(self):
         self.is_available = False
         self.client = None
         self.model = "gpt-3.5-turbo"
         self._cache_ttl = 86400  # 24 giờ
+        self._provider = "rule_based"
 
-        # Ưu tiên sử dụng Google Gemini nếu có GEMINI_API_KEY
-        if GEMINI_API_KEY and GEMINI_API_KEY != "mock-api-key-for-testing":
-            try:
-                self.client = OpenAI(
-                    api_key=GEMINI_API_KEY,
-                    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-                    timeout=15.0,
-                    max_retries=1,
-                )
+        # Ưu tiên sử dụng Google Gemini nếu có key khả dụng
+        if gemini_key_manager.has_keys:
+            client = gemini_key_manager.get_client(timeout=15.0, max_retries=1)
+            if client:
+                self.client = client
                 self.model = "gemini-3.5-flash-lite"
                 self.is_available = True
+                self._provider = "gemini"
                 logger.info("AIAdviceService khởi tạo thành công với mô hình Google Gemini (%s)", self.model)
-            except Exception as e:
-                logger.warning("Không thể khởi tạo Gemini client trong AIAdviceService: %s", e)
 
         # Fallback sang OpenAI nếu có OPENAI_API_KEY hợp lệ
         if not self.is_available and OPENAI_API_KEY and OPENAI_API_KEY != "mock-api-key-for-testing":
@@ -50,9 +47,34 @@ class AIAdviceService:
                 )
                 self.model = "gpt-3.5-turbo"
                 self.is_available = True
+                self._provider = "openai"
                 logger.info("AIAdviceService khởi tạo thành công với OpenAI (%s)", self.model)
             except Exception as e:
                 logger.warning("Không thể khởi tạo OpenAI trong AIAdviceService: %s", e)
+
+    def _failover_to_next_client(self, reason: str = "") -> bool:
+        """Tự động chuyển đổi sang Gemini API key dự phòng tiếp theo hoặc OpenAI khi gặp lỗi Quota/RateLimit."""
+        if self._provider == "gemini":
+            has_backup = gemini_key_manager.mark_current_key_exhausted(reason)
+            if has_backup:
+                new_client = gemini_key_manager.get_client(timeout=15.0, max_retries=1)
+                if new_client:
+                    self.client = new_client
+                    logger.info("AIAdviceService đã chuyển đổi sang Gemini API key dự phòng thành công.")
+                    return True
+
+            # Nếu hết toàn bộ Gemini keys, thử chuyển sang OpenAI
+            if OPENAI_API_KEY and OPENAI_API_KEY != "mock-api-key-for-testing":
+                try:
+                    self.client = OpenAI(api_key=OPENAI_API_KEY, timeout=15.0, max_retries=1)
+                    self.model = "gpt-3.5-turbo"
+                    self._provider = "openai"
+                    logger.warning("Đã hết toàn bộ Gemini keys, AIAdviceService chuyển sang dùng OpenAI.")
+                    return True
+                except Exception as e:
+                    logger.error("Không thể khởi tạo OpenAI fallback: %s", e)
+
+        return False
 
     def _compute_hash(self, summary_data: dict) -> str:
         """Tạo khóa băm MD5 duy nhất cho bộ dữ liệu tài chính."""
@@ -152,7 +174,7 @@ class AIAdviceService:
             logger.error("Could not read financial_advice_prompt.txt: %s", e)
             return "Lỗi cấu hình AI (Thiếu file prompt tư vấn)."
 
-        max_attempts = 2
+        max_attempts = max(2, gemini_key_manager.total_keys + 1)
         for attempt in range(max_attempts):
             try:
                 async def _call_api():
@@ -183,8 +205,10 @@ class AIAdviceService:
 
             except RateLimitError as e:
                 logger.warning("Gemini/OpenAI Rate Limit trong AI Advice (lần thử %d/%d): %s", attempt + 1, max_attempts, e)
+                if self._failover_to_next_client(str(e)):
+                    continue
                 if attempt < max_attempts - 1:
-                    await asyncio.sleep(1.5)
+                    await asyncio.sleep(1.0)
                 else:
                     break
             except (APITimeoutError, APIConnectionError, asyncio.TimeoutError) as e:
@@ -195,6 +219,10 @@ class AIAdviceService:
                     break
             except Exception as e:
                 logger.exception("Lỗi không xác định khi gọi AI Advice: %s", e)
+                err_msg = str(e).lower()
+                if "quota" in err_msg or "exhausted" in err_msg or "429" in err_msg or "unauthorized" in err_msg:
+                    if self._failover_to_next_client(str(e)):
+                        continue
                 break
 
         # Kích hoạt Fallback Chuyên gia Tài chính ngoại tuyến chất lượng cao
@@ -215,7 +243,7 @@ class AIAdviceService:
 
         system_prompt = "Trợ lý tài chính ExpenseAI. Trả lời ngắn gọn bằng tiếng Việt dựa trên dữ liệu thu chi."
 
-        max_attempts = 2
+        max_attempts = max(2, gemini_key_manager.total_keys + 1)
         for attempt in range(max_attempts):
             try:
                 async def _call_api():
@@ -233,14 +261,26 @@ class AIAdviceService:
                 response = await asyncio.wait_for(_call_api(), timeout=15.0)
                 return (response.choices[0].message.content or "").strip()
 
-            except (RateLimitError, APITimeoutError, APIConnectionError, asyncio.TimeoutError) as e:
-                logger.warning("Lỗi API trong chat_with_context (lần thử %d): %s", attempt + 1, e)
+            except RateLimitError as e:
+                logger.warning("RateLimit trong chat_with_context (lần thử %d): %s", attempt + 1, e)
+                if self._failover_to_next_client(str(e)):
+                    continue
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(1.0)
+                else:
+                    break
+            except (APITimeoutError, APIConnectionError, asyncio.TimeoutError) as e:
+                logger.warning("Timeout trong chat_with_context (lần thử %d): %s", attempt + 1, e)
                 if attempt < max_attempts - 1:
                     await asyncio.sleep(1.0)
                 else:
                     break
             except Exception as e:
                 logger.exception("Lỗi không xác định khi gọi chat_with_context: %s", e)
+                err_msg = str(e).lower()
+                if "quota" in err_msg or "exhausted" in err_msg or "429" in err_msg:
+                    if self._failover_to_next_client(str(e)):
+                        continue
                 break
 
         # Fallback: trả lời dựa trên rule-based thay vì trả về lỗi

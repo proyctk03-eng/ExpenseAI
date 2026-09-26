@@ -2,10 +2,11 @@
 from datetime import date, timedelta
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from src.utils.limiter import limiter
 
 from src.database import get_db
 from src.models import Transaction, Category, User
@@ -20,7 +21,9 @@ behavior_service = AIBehaviorService()
 
 
 @router.post("/")
+@limiter.limit("5/minute")
 async def get_financial_advice(
+    request: Request,
     force_refresh: bool = Query(False, description="Bắt buộc làm mới không dùng cache"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -63,7 +66,9 @@ async def get_financial_advice(
     return {"advice": advice}
 
 @router.get("/behavior")
+@limiter.limit("3/minute")
 def analyze_user_behavior(
+    request: Request,
     share_transaction_details: bool = Query(
         False,
         description="Xác nhận cho phép gửi mô tả giao dịch đã chọn tới nhà cung cấp AI.",
@@ -112,10 +117,12 @@ def analyze_user_behavior(
     return {"analysis": analysis}
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(..., min_length=1, max_length=2000, description="Tin nhắn gửi tới AI (tối đa 2000 ký tự)")
 
 @router.post("/chat")
+@limiter.limit("10/minute")
 async def chat_with_ai(
+    request: Request,
     chat_req: ChatRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)

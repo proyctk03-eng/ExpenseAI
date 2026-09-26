@@ -87,24 +87,49 @@
 
 {% block scripts %}
 <script>
+// S-FIX M-05: Kết nối thực tế đến /api/feedback/ thay vì fake setTimeout
 document.getElementById('contactForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector('button');
     const msg = document.getElementById('contactMsg');
+    const subject = document.getElementById('contactSubject').value.trim();
+    const message = document.getElementById('contactMessage').value.trim();
     
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang gửi...';
+    msg.classList.add('d-none');
 
-    // Simulate API call for feedback (chưa có endpoint backend)
-    setTimeout(() => {
-        msg.className = 'alert alert-success';
-        msg.textContent = 'Cảm ơn bạn đã phản hồi. Chúng tôi sẽ ghi nhận và liên hệ lại sớm nhất!';
+    try {
+        const res = await fetch('/api/feedback/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                subject: subject,
+                message: message,
+                topic: 'other'
+            })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            msg.className = 'alert alert-success';
+            msg.innerHTML = `<strong>Thành công!</strong> Ticket #${data.id} đã được gửi thành công. Bạn có thể theo dõi tại <a href="/feedback" class="alert-link">Hệ thống Ticket Phản hồi</a>.`;
+            msg.classList.remove('d-none');
+            e.target.reset();
+        } else {
+            const err = await res.json();
+            msg.className = 'alert alert-danger';
+            msg.textContent = err.detail || 'Không thể gửi yêu cầu. Vui lòng thử lại.';
+            msg.classList.remove('d-none');
+        }
+    } catch (err) {
+        msg.className = 'alert alert-danger';
+        msg.textContent = 'Lỗi kết nối máy chủ. Vui lòng kiểm tra mạng.';
         msg.classList.remove('d-none');
-        e.target.reset();
-        
+    } finally {
         btn.disabled = false;
         btn.innerHTML = 'Gửi yêu cầu';
-    }, 1000);
+    }
 });
 </script>
 {% endblock %}

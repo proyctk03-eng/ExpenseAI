@@ -16,6 +16,17 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL") or "sqlite:///./expense_db.sqlite"
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_API_KEY_BACKUP = os.getenv("GEMINI_API_KEY_BACKUP", "") or os.getenv("GEMINI_BACKUP_API_KEY", "")
+
+
+def get_gemini_api_keys() -> list:
+    """Trả về danh sách Google Gemini API Keys theo thứ tự ưu tiên (Primary -> Backup)."""
+    keys = []
+    if GEMINI_API_KEY and GEMINI_API_KEY != "mock-api-key-for-testing":
+        keys.append(GEMINI_API_KEY)
+    if GEMINI_API_KEY_BACKUP and GEMINI_API_KEY_BACKUP != "mock-api-key-for-testing" and GEMINI_API_KEY_BACKUP not in keys:
+        keys.append(GEMINI_API_KEY_BACKUP)
+    return keys
 
 # --- SECRET_KEY: KHÔNG dùng hardcoded fallback (S1 Security Fix) ---
 _env_secret = os.getenv("SECRET_KEY", "").strip()
@@ -72,7 +83,7 @@ if ENVIRONMENT == "production":
         missing_keys.append("DATABASE_URL")
     if not os.getenv("SECRET_KEY"):
         missing_keys.append("SECRET_KEY")
-    if not os.getenv("OPENAI_API_KEY") and not os.getenv("GEMINI_API_KEY"):
+    if not os.getenv("OPENAI_API_KEY") and not os.getenv("GEMINI_API_KEY") and not os.getenv("GEMINI_API_KEY_BACKUP"):
         missing_keys.append("OPENAI_API_KEY hoặc GEMINI_API_KEY")
 
     if missing_keys:

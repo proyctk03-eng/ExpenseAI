@@ -149,7 +149,8 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Chart.js with SRI (L-01) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous"></script>
 <script>
 Chart.defaults.color = '#94A3B8';
 Chart.defaults.font.family = "'Inter', sans-serif";
@@ -260,11 +261,17 @@ async function loadDashboard() {
     } catch (e) { console.error('Recent TX error:', e); }
 }
 
+// S-FIX L-03: Xử lý an toàn Markdown từ AI (Escape HTML trước, định dạng an toàn sau)
 function formatAdviceText(text) {
     if (!text) return '';
     let formatted = escapeHtml(text);
-    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    formatted = formatted.replace(/(^|\n)\s*\*\s+/g, '$1• ');
+    // Bold: **text**
+    formatted = formatted.replace(/\*\*([^\*\n]+?)\*\*/g, '<strong>$1</strong>');
+    // Italic: *text* (chỉ khi không phải bullet marker)
+    formatted = formatted.replace(/(?<!\*|\b)\*([^\*\n]+?)\*(?!\*)/g, '<em>$1</em>');
+    // Bullet points: dòng bắt đầu bằng * hoặc -
+    formatted = formatted.replace(/(^|\n)\s*[\*\-]\s+/g, '$1• ');
+    // Line breaks
     formatted = formatted.replace(/\n/g, '<br>');
     return formatted;
 }

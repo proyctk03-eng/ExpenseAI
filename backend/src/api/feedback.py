@@ -1,9 +1,10 @@
 """API quản lý phản hồi (Feedback Ticket System)."""
+import html
 import logging
 from datetime import date
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sa_func
 
@@ -14,6 +15,7 @@ from src.schemas.feedback import (
     FeedbackStatusUpdate, ReplyCreate, ReplyResponse,
 )
 from src.utils.dependencies import get_current_user
+from src.utils.limiter import limiter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/feedback", tags=["feedback"])
@@ -52,16 +54,21 @@ def _reply_to_response(reply: TicketReply) -> dict:
 #  User: Tạo phản hồi mới
 # ──────────────────────────────────────────────
 @router.post("/", response_model=FeedbackResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 def create_feedback(
+    request: Request,
     data: FeedbackCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Người dùng tạo ticket phản hồi mới."""
+    # S-FIX H-05: Server-side input sanitization để chống XSS lưu trữ (Stored XSS)
+    sanitized_subject = html.escape(data.subject.strip())
+    sanitized_message = html.escape(data.message.strip())
     ticket = FeedbackTicket(
         user_id=current_user.id,
-        subject=data.subject,
-        message=data.message,
+        subject=sanitized_subject,
+        message=sanitized_message,
         topic=data.topic,
         status="pending",
     )
@@ -214,7 +221,9 @@ def update_feedback_status(
 #  Gửi phản hồi (reply) trong ticket
 # ──────────────────────────────────────────────
 @router.post("/{ticket_id}/reply", response_model=ReplyResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute")
 def create_reply(
+    request: Request,
     ticket_id: int,
     data: ReplyCreate,
     db: Session = Depends(get_db),
@@ -228,10 +237,12 @@ def create_reply(
     if not current_user.is_admin and ticket.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Không có quyền phản hồi ticket này")
 
+    # S-FIX H-05: Server-side input sanitization để chống XSS lưu trữ
+    sanitized_reply_message = html.escape(data.message.strip())
     reply = TicketReply(
         ticket_id=ticket_id,
         user_id=current_user.id,
-        message=data.message,
+        message=sanitized_reply_message,
     )
     db.add(reply)
 

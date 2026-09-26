@@ -100,19 +100,12 @@
                 <p class="auth-form-subtitle">Chào mừng trở lại! Vui lòng nhập thông tin xác thực</p>
             </div>
 
-            <!-- Hộp chọn nhanh tài khoản thử nghiệm -->
-            <div class="demo-accounts-box">
+            <!-- S-FIX C-01: Demo login qua server-side endpoint (không lộ credentials) -->
+            <div class="demo-accounts-box" id="demoAccountsBox" style="display:none;">
                 <div class="demo-accounts-title">
-                    <span><i class="fa-solid fa-bolt text-warning me-1"></i> Điền nhanh tài khoản mẫu:</span>
+                    <span><i class="fa-solid fa-bolt text-warning me-1"></i> Đăng nhập nhanh tài khoản mẫu:</span>
                 </div>
-                <div class="demo-pills-row">
-                    <button type="button" class="btn-demo-pill" onclick="fillDemo('sinhvien', '123456')" title="Dữ liệu mẫu 30 ngày của sinh viên">
-                        <i class="fa-solid fa-graduation-cap text-primary"></i> Sinh viên
-                    </button>
-                    <button type="button" class="btn-demo-pill" onclick="fillDemo('admin', 'admin123')" title="Tài khoản quản trị viên">
-                        <i class="fa-solid fa-user-shield text-danger"></i> Quản trị viên
-                    </button>
-                </div>
+                <div class="demo-pills-row" id="demoPillsRow"></div>
             </div>
 
             <div id="errorMsg" class="alert alert-danger d-none d-flex align-items-center gap-2 mb-3" style="font-size: 0.88rem; border-radius: 10px;">
@@ -189,11 +182,45 @@ toggleBtn.addEventListener('click', () => {
     }
 });
 
-// Điền nhanh tài khoản mẫu
-function fillDemo(u, p) {
-    document.getElementById('username').value = u;
-    document.getElementById('password').value = p;
-    showToast(`Đã tự động điền tài khoản: ${u}`, 'primary');
+// S-FIX C-01: Tải danh sách demo account từ server (không hardcode credentials)
+(async function loadDemoAccounts() {
+    try {
+        const res = await fetch('/api/auth/demo-accounts');
+        if (res.ok) {
+            const data = await res.json();
+            const container = document.getElementById('demoPillsRow');
+            const box = document.getElementById('demoAccountsBox');
+            data.accounts.forEach(acc => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn-demo-pill';
+                btn.title = `Đăng nhập nhanh: ${acc.label}`;
+                btn.innerHTML = `<i class="fa-solid ${acc.icon} text-primary"></i> ${acc.label}`;
+                btn.onclick = () => demoLogin(acc.role, acc.label);
+                container.appendChild(btn);
+            });
+            if (data.accounts.length > 0) box.style.display = '';
+        }
+    } catch (e) { /* Demo không khả dụng — ẩn hộp demo */ }
+})();
+
+async function demoLogin(role, label) {
+    try {
+        const res = await fetch('/api/auth/demo-login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ role })
+        });
+        if (res.ok) {
+            showToast(`Đăng nhập demo (${label}) thành công!`, 'success');
+            setTimeout(() => { window.location.href = '/'; }, 500);
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Đăng nhập demo thất bại', 'danger');
+        }
+    } catch (e) {
+        showToast('Lỗi kết nối khi đăng nhập demo', 'danger');
+    }
 }
 
 // Xử lý quên mật khẩu
@@ -201,7 +228,7 @@ function handleForgotPassword() {
     showToast('Vui lòng liên hệ quản trị viên để được cấp lại mật khẩu!', 'warning');
 }
 
-// Xử lý submit Form Đăng Nhập
+// Xử lý submit Form Đăng Nhập (S-FIX C-04: không lưu token vào localStorage)
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('username').value.trim();
@@ -226,9 +253,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 
         const data = await res.json();
         if (res.ok) {
-            if (data.access_token) {
-                localStorage.setItem('token', data.access_token);
-            }
+            // Cookie httpOnly đã được set tự động bởi server response
             showToast('Đăng nhập thành công! Đang chuyển hướng...', 'success');
             setTimeout(() => {
                 window.location.href = '/';
@@ -239,7 +264,25 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             btnSpinner.classList.add('d-none');
 
             if (res.status === 429) {
-                showToast('Quá nhiều yêu cầu đăng nhập. Vui lòng thử lại sau ít phút.', 'danger');
+                showToast('Quá nhiều yêu cầu đăng nhập. Vui lòng chờ 60 giây.', 'danger');
+                errorText.textContent = 'Bạn đã nhập sai quá nhiều lần. Hệ thống tạm khóa trong 60 giây để bảo vệ tài khoản.';
+                errorMsg.classList.remove('d-none');
+
+                // S-FIX M-06: Client-side cooldown countdown timer
+                let cooldown = 60;
+                submitBtn.disabled = true;
+                btnText.textContent = `Thử lại sau (${cooldown}s)`;
+                const cooldownTimer = setInterval(() => {
+                    cooldown--;
+                    if (cooldown <= 0) {
+                        clearInterval(cooldownTimer);
+                        submitBtn.disabled = false;
+                        btnText.textContent = 'Đăng nhập';
+                        errorMsg.classList.add('d-none');
+                    } else {
+                        btnText.textContent = `Thử lại sau (${cooldown}s)`;
+                    }
+                }, 1000);
             } else {
                 errorText.textContent = data.detail || 'Sai tên đăng nhập hoặc mật khẩu';
                 errorMsg.classList.remove('d-none');

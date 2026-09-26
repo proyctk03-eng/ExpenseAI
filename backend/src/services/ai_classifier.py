@@ -7,8 +7,8 @@ from typing import Optional, Dict, Any
 
 import httpx
 from openai import OpenAI, APITimeoutError, APIConnectionError, RateLimitError
-
 from src.config import OPENAI_API_KEY, GEMINI_API_KEY
+from src.utils.ai_key_manager import gemini_key_manager
 
 import asyncio
 from pydantic import BaseModel, Field
@@ -99,33 +99,28 @@ VIETNAMESE_HEURISTICS = [
             "học phí", "sách", "vở", "khóa học", "tài liệu", "giáo trình",
             "dụng cụ học tập", "thi cử", "chứng chỉ", "tiếng anh"
         ]
-    },
+    }
 ]
 
-
 class AIClassifier:
-    """Phân loại giao dịch vào danh mục bằng Gemini hoặc OpenAI, có Cache Redis & Rule Heuristics."""
+    """Phân loại giao dịch vào danh mục bằng Gemini hoặc OpenAI, có Cache Redis, Failover Multi-Key & Rule Heuristics."""
 
     def __init__(self):
         self.is_available = False
         self.client = None
         self.model = "gpt-3.5-turbo"
         self._cache_ttl = 86400  # 24 giờ
+        self._provider = "offline"
 
-        # Ưu tiên sử dụng Google Gemini nếu có GEMINI_API_KEY
-        if GEMINI_API_KEY and GEMINI_API_KEY != "mock-api-key-for-testing":
-            try:
-                self.client = OpenAI(
-                    api_key=GEMINI_API_KEY,
-                    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-                    timeout=15.0,
-                    max_retries=1,
-                )
+        # Ưu tiên sử dụng Google Gemini nếu có key
+        if gemini_key_manager.has_keys:
+            client = gemini_key_manager.get_client(timeout=15.0, max_retries=1)
+            if client:
+                self.client = client
                 self.model = "gemini-3.5-flash-lite"
                 self.is_available = True
+                self._provider = "gemini"
                 logger.info("AIClassifier khởi tạo thành công với mô hình Google Gemini (%s)", self.model)
-            except Exception as e:
-                logger.warning("Không thể khởi tạo Gemini client trong AIClassifier: %s", e)
 
         # Fallback sang OpenAI nếu có OPENAI_API_KEY hợp lệ
         if not self.is_available and OPENAI_API_KEY and OPENAI_API_KEY != "mock-api-key-for-testing":
@@ -137,9 +132,33 @@ class AIClassifier:
                 )
                 self.model = "gpt-3.5-turbo"
                 self.is_available = True
+                self._provider = "openai"
                 logger.info("AIClassifier khởi tạo thành công với OpenAI (%s)", self.model)
             except Exception as e:
                 logger.warning("Không thể khởi tạo OpenAI client trong AIClassifier: %s", e)
+
+    def _failover_to_next_client(self, reason: str = "") -> bool:
+        """Tự động chuyển đổi sang Gemini API key dự phòng tiếp theo hoặc OpenAI khi gặp lỗi Quota/RateLimit."""
+        if self._provider == "gemini":
+            has_backup = gemini_key_manager.mark_current_key_exhausted(reason)
+            if has_backup:
+                new_client = gemini_key_manager.get_client(timeout=15.0, max_retries=1)
+                if new_client:
+                    self.client = new_client
+                    logger.info("AIClassifier đã chuyển đổi sang Gemini API key dự phòng thành công.")
+                    return True
+
+            if OPENAI_API_KEY and OPENAI_API_KEY != "mock-api-key-for-testing":
+                try:
+                    self.client = OpenAI(api_key=OPENAI_API_KEY, timeout=15.0, max_retries=1)
+                    self.model = "gpt-3.5-turbo"
+                    self._provider = "openai"
+                    logger.warning("Đã hết toàn bộ Gemini keys, AIClassifier chuyển sang dùng OpenAI.")
+                    return True
+                except Exception as e:
+                    logger.error("Không thể khởi tạo OpenAI fallback: %s", e)
+
+        return False
 
     def _normalize_text(self, text: str) -> str:
         """Chuẩn hóa chuỗi mô tả để tra cứu cache và so khớp từ khóa."""
@@ -234,7 +253,7 @@ class AIClassifier:
             logger.error("Could not read classification_prompt.txt: %s", e)
             return {"category": "Chưa phân loại", "confidence": 0.0, "type": "expense", "source": "missing_prompt"}
 
-        max_attempts = 2
+        max_attempts = max(2, gemini_key_manager.total_keys + 1)
         for attempt in range(max_attempts):
             try:
                 # Wrap API call with asyncio.wait_for for strict timeout
@@ -278,6 +297,14 @@ class AIClassifier:
                         pass
                 return parsed_dict
 
+            except RateLimitError as e:
+                logger.warning("Gemini Rate Limit trong AI Classifier (lần thử %d/%d): %s", attempt + 1, max_attempts, e)
+                if self._failover_to_next_client(str(e)):
+                    continue
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(1.0)
+                else:
+                    break
             except asyncio.TimeoutError:
                 logger.warning("Gemini API Timeout (asyncio.wait_for 2.5s) (lần thử %d/%d)", attempt + 1, max_attempts)
                 if attempt < max_attempts - 1:
@@ -286,6 +313,10 @@ class AIClassifier:
                     break
             except Exception as e:
                 logger.exception("Lỗi gọi AI Classifier (lần thử %d/%d): %s", attempt + 1, max_attempts, e)
+                err_msg = str(e).lower()
+                if "quota" in err_msg or "exhausted" in err_msg or "429" in err_msg or "unauthorized" in err_msg:
+                    if self._failover_to_next_client(str(e)):
+                        continue
                 if attempt < max_attempts - 1:
                     await asyncio.sleep(1.0)
                 else:

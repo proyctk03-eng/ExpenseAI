@@ -76,7 +76,8 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Chart.js with SRI (L-01) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous"></script>
 <script>
 Chart.defaults.color = '#94A3B8';
 Chart.defaults.font.family = "'Inter', sans-serif";
@@ -106,7 +107,9 @@ async function loadStats() {
             } else {
                 const ctx = document.getElementById('categoryChart').getContext('2d');
                 const palette = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#84CC16', '#64748B'];
-                new Chart(ctx, {
+                // S-FIX M-04: Destroy previous chart instance để tránh memory leak
+                if (window.categoryChartInst) window.categoryChartInst.destroy();
+                window.categoryChartInst = new Chart(ctx, {
                     type: 'doughnut',
                     data: {
                         labels: expenses.map(e => e.category),
@@ -134,8 +137,9 @@ async function loadStats() {
         if (trendRes.ok) {
             const trendData = await trendRes.json();
             const ctx2 = document.getElementById('trendChart').getContext('2d');
-            
-            new Chart(ctx2, {
+            // S-FIX M-04: Destroy previous chart instance để tránh memory leak
+            if (window.trendChartInst) window.trendChartInst.destroy();
+            window.trendChartInst = new Chart(ctx2, {
                 type: 'bar',
                 data: {
                     labels: trendData.map(d => d.month),

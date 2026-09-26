@@ -16,8 +16,8 @@
   --accent-orange: #F59E0B;
   --text-dark: #0F172A;
   --text-body: #334155;
-  --text-muted: #64748B;
-  --text-light: #94A3B8;
+  --text-muted: #475569; /* S-FIX L-04: WCAG AA contrast ratio 5.9:1 on #FFF/#F8FAFC */
+  --text-light: #64748B; /* S-FIX L-04: WCAG AA contrast ratio 4.54:1 on #FFF */
   --border-color: rgba(226, 232, 240, 0.8);
   --border-light: rgba(241, 245, 249, 0.8);
   
@@ -50,8 +50,8 @@
     --accent-blue-hover: #818CF8;
     --accent-cyan: #22D3EE;
     --text-dark: #F8FAFC;
-    --text-body: #CBD5E1;
-    --text-muted: #94A3B8;
+    --text-body: #E2E8F0;
+    --text-muted: #CBD5E1; /* S-FIX L-04: WCAG AA contrast ratio 9.2:1 on dark */
     --border-color: rgba(51, 65, 85, 0.5);
     --border-light: rgba(30, 41, 59, 0.8);
     --shadow-md: 0 8px 16px -4px rgba(0, 0, 0, 0.3);

@@ -90,6 +90,22 @@ async def process_receipt_background(base64_str: str, mime_type: str, user_id: i
         logger.exception("Lỗi process_receipt_background: %s", e)
 
 
+# S-FIX H-06: Danh sách MIME type và hàm kiểm tra Magic Bytes cho file ảnh
+ALLOWED_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+def _detect_image_mime(data: bytes) -> Optional[str]:
+    """Kiểm tra Magic Bytes thực tế trong nhị phân của file."""
+    if len(data) >= 3 and data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if len(data) >= 8 and data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if len(data) >= 6 and data[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
 @router.post("/scan-receipt", status_code=status.HTTP_202_ACCEPTED)
 @limiter.limit("5/minute")
 async def scan_receipt(
@@ -99,18 +115,29 @@ async def scan_receipt(
     current_user: User = Depends(require_permission("transaction:create"))
 ):
     """Trích xuất thông tin hóa đơn từ ảnh upload bằng AI Vision chạy ngầm."""
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Chỉ hỗ trợ file hình ảnh.")
+    # S-FIX H-06: Kiểm tra cả header content-type và magic bytes nhị phân thực tế
+    if not file.content_type or file.content_type.lower() not in ALLOWED_IMAGE_MIMES:
+        raise HTTPException(
+            status_code=400, 
+            detail="Chỉ hỗ trợ file hình ảnh định dạng JPEG, PNG, WEBP hoặc GIF."
+        )
         
     try:
         contents = await file.read()
         if len(contents) > 5 * 1024 * 1024:
             raise HTTPException(status_code=400, detail="Kích thước ảnh quá lớn (Tối đa 5MB).")
             
+        real_mime = _detect_image_mime(contents)
+        if not real_mime or real_mime not in ALLOWED_IMAGE_MIMES:
+            raise HTTPException(
+                status_code=400, 
+                detail="Nội dung file không phải hình ảnh hợp lệ (Magic bytes không khớp định dạng ảnh)."
+            )
+            
         base64_str = base64.b64encode(contents).decode("utf-8")
         
-        # Đẩy tác vụ nặng vào BackgroundTasks
-        background_tasks.add_task(process_receipt_background, base64_str, file.content_type or "image/jpeg", current_user.id)
+        # Đẩy tác vụ nặng vào BackgroundTasks với MIME type thực tế
+        background_tasks.add_task(process_receipt_background, base64_str, real_mime, current_user.id)
         
         return {
             "status": "processing", 

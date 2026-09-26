@@ -18,10 +18,10 @@
     <link rel="canonical" href="{% block canonical %}{% endblock %}">
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text x='16' y='22' font-size='18' text-anchor='middle' fill='white' font-family='Arial'>$</text></svg>">
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap 5 CSS with SRI (L-01) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <!-- FontAwesome with SRI (L-01) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -151,9 +151,16 @@
     <!-- Skip to Content (AC: keyboard navigation) -->
     <a href="#main-content" class="visually-hidden-focusable" style="position:absolute;top:0;left:0;z-index:99999;padding:8px 16px;background:var(--accent-blue);color:white;">Bỏ qua menu, đến nội dung chính</a>
 
-    <!-- Bootstrap Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap Bundle with Popper with SRI (L-01) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
     <script>
+        // S-FIX L-02: Suppress console logs in production environments
+        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            console.log = function() {};
+            console.debug = function() {};
+            console.info = function() {};
+        }
+
         function showToast(message, type = 'primary') {
             const toastEl = document.getElementById('liveToast');
             const toastBody = document.getElementById('toastMessage');
@@ -163,45 +170,41 @@
             toast.show();
         }
 
-        // Thay thế fetch API global để tự động xử lý token expiration & gắn token dự phòng
+        // Helper đọc cookie
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        // S-FIX C-04 & H-03: Cookie-based auth + CSRF auto-injection
         const originalFetch = window.fetch;
         window.fetch = async function(resource, init = {}) {
-            // Tự động gắn Authorization Bearer từ localStorage nếu có
-            const token = localStorage.getItem('token');
-            if (token && typeof resource === 'string' && resource.startsWith('/api/') && !resource.includes('/auth/login') && !resource.includes('/auth/register')) {
-                init = init || {};
-                init.headers = init.headers || {};
-                if (init.headers instanceof Headers) {
-                    if (!init.headers.has('Authorization')) init.headers.set('Authorization', 'Bearer ' + token);
-                } else if (Array.isArray(init.headers)) {
-                    if (!init.headers.some(([k]) => k.toLowerCase() === 'authorization')) init.headers.push(['Authorization', 'Bearer ' + token]);
-                } else {
-                    if (!init.headers['Authorization'] && !init.headers['authorization']) init.headers['Authorization'] = 'Bearer ' + token;
+            // S-FIX H-03: Tự động gắn header X-CSRF-Token cho POST, PUT, DELETE, PATCH
+            const method = (init.method || 'GET').toUpperCase();
+            if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+                const csrfToken = getCookie('csrftoken');
+                if (csrfToken) {
+                    if (!init.headers) {
+                        init.headers = { 'X-CSRF-Token': csrfToken };
+                    } else if (init.headers instanceof Headers) {
+                        init.headers.set('X-CSRF-Token', csrfToken);
+                    } else if (Array.isArray(init.headers)) {
+                        init.headers.push(['X-CSRF-Token', csrfToken]);
+                    } else {
+                        init.headers['X-CSRF-Token'] = csrfToken;
+                    }
                 }
             }
 
             let response = await originalFetch(resource, init);
-            if (response.status === 401 && typeof resource === 'string' && !resource.includes('/auth/login') && !resource.includes('/auth/refresh')) {
-                // Thử gọi refresh token
+            // Tự động refresh token khi nhận 401 (cookie-based)
+            if (response.status === 401 && typeof resource === 'string' && !resource.includes('/auth/login') && !resource.includes('/auth/refresh') && !resource.includes('/auth/demo-login')) {
                 try {
-                    const refreshRes = await originalFetch('/api/auth/refresh', {
-                        method: 'POST'
-                    });
+                    const refreshRes = await originalFetch('/api/auth/refresh', { method: 'POST' });
                     if (refreshRes.ok) {
-                        const refreshData = await refreshRes.json();
-                        if (refreshData && refreshData.access_token) {
-                            localStorage.setItem('token', refreshData.access_token);
-                            // Cập nhật header với token mới
-                            if (init.headers instanceof Headers) {
-                                init.headers.set('Authorization', 'Bearer ' + refreshData.access_token);
-                            } else if (Array.isArray(init.headers)) {
-                                const idx = init.headers.findIndex(([k]) => k.toLowerCase() === 'authorization');
-                                if (idx !== -1) init.headers[idx] = ['Authorization', 'Bearer ' + refreshData.access_token];
-                                else init.headers.push(['Authorization', 'Bearer ' + refreshData.access_token]);
-                            } else if (init.headers) {
-                                init.headers['Authorization'] = 'Bearer ' + refreshData.access_token;
-                            }
-                        }
+                        // Cookie mới đã được set tự động bởi server response
                         return originalFetch(resource, init);
                     }
                 } catch (e) {}
@@ -280,10 +283,8 @@
         async function logout() {
             try {
                 await fetch('/api/auth/logout', { method: 'POST' });
-                localStorage.removeItem('token');
                 window.location.href = '/login';
             } catch (e) {
-                console.error('Logout error', e);
                 window.location.href = '/login';
             }
         }

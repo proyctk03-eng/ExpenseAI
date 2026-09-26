@@ -1,12 +1,34 @@
 """Router cho giao diện Web."""
 import os
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from typing import Optional
+from fastapi import APIRouter, Request, Depends, status
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+from jose import jwt, JWTError
+
+from src.config import SECRET_KEY, ALGORITHM
+from src.database import get_db
+from src.models import User
 
 router = APIRouter(tags=["web"])
 templates_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "frontend", "templates"))
 templates = Jinja2Templates(directory=templates_dir)
+
+
+def _get_web_user(request: Request, db: Session) -> Optional[User]:
+    """Helper lấy User từ cookie session cho Web routes."""
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        return db.query(User).filter(User.id == int(user_id)).first()
+    except (JWTError, Exception):
+        return None
 
 @router.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
@@ -38,7 +60,13 @@ def feedback_page(request: Request):
     return templates.TemplateResponse(request=request, name="feedback.html")
 
 @router.get("/admin", response_class=HTMLResponse)
-def admin_page(request: Request):
+def admin_page(request: Request, db: Session = Depends(get_db)):
+    # S-FIX M-02: Server-side route guard cho trang admin
+    user = _get_web_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login?next=/admin", status_code=status.HTTP_303_SEE_OTHER)
+    if not user.is_admin:
+        return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
     return templates.TemplateResponse(request=request, name="admin.html")
 
 

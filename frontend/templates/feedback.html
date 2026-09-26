@@ -21,7 +21,7 @@
             <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3 shadow-sm" onclick="reloadFeedbackData()" id="btnRefresh" title="Tải lại dữ liệu">
                 <i class="fa-solid fa-arrows-rotate me-1" id="refreshIcon"></i> Làm mới
             </button>
-            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm" id="btnRoleSwitch" onclick="toggleDemoRole()" title="Chuyển đổi góc nhìn giữa Sinh viên và Quản trị viên">
+            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm" id="btnRoleSwitch" onclick="switchDemoRole()" title="Chuyển đổi góc nhìn giữa Sinh viên và Quản trị viên">
                 <i class="fa-solid fa-repeat me-1"></i> <span id="btnRoleSwitchText">Đổi vai trò</span>
             </button>
             <button type="button" class="btn btn-glass btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#createTicketModal" id="btnOpenCreateTicket">
@@ -629,27 +629,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function initUserAndDashboard() {
+    // S-FIX C-03: Xóa auto-login backdoor — khi chưa đăng nhập thì yêu cầu đăng nhập
     try {
-        let res = await fetch('/api/auth/me');
-        if (!res.ok) {
-            // Phiên đăng nhập có thể đã hết hạn hoặc chưa lưu token. Thử tự động đăng nhập Admin nền để không gián đoạn trải nghiệm
-            try {
-                const autoLoginRes = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: 'admin', password: 'admin123' })
-                });
-                if (autoLoginRes.ok) {
-                    const loginData = await autoLoginRes.json();
-                    if (loginData.access_token) {
-                        localStorage.setItem('token', loginData.access_token);
-                    }
-                    res = await fetch('/api/auth/me');
-                }
-            } catch (loginErr) {
-                console.warn('Auto admin login fallback error:', loginErr);
-            }
-        }
+        const res = await fetch('/api/auth/me');
 
         if (res.ok) {
             currentUser = await res.json();
@@ -662,20 +644,16 @@ async function initUserAndDashboard() {
                     <td colspan="8" class="text-center py-5 text-muted">
                         <div class="mb-3"><i class="fa-solid fa-lock fa-3x text-secondary opacity-50"></i></div>
                         <h6 class="fw-bold text-dark mb-2">Chưa đăng nhập tài khoản</h6>
-                        <p class="small text-muted mb-3">Bạn cần đăng nhập tài khoản Quản trị viên để truy cập và xử lý các phản hồi người dùng.</p>
+                        <p class="small text-muted mb-3">Bạn cần đăng nhập tài khoản để truy cập và xử lý các phản hồi.</p>
                         <div class="d-flex justify-content-center gap-2">
-                            <button type="button" class="btn btn-glass btn-sm rounded-pill px-4" onclick="quickLoginAdmin()">
-                                <i class="fa-solid fa-shield-halved me-1"></i> Đăng nhập Admin nhanh (1 click)
-                            </button>
-                            <a href="/login" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
-                                Đến trang Đăng nhập
+                            <a href="/login" class="btn btn-glass btn-sm rounded-pill px-4">
+                                <i class="fa-solid fa-arrow-right-to-bracket me-1"></i> Đăng nhập
                             </a>
                         </div>
                     </td>
                 </tr>`;
         }
     } catch (e) {
-        console.error('Init user error:', e);
         showToast('Không thể xác thực thông tin người dùng', 'danger');
     }
 }
@@ -729,50 +707,26 @@ function adjustUIForRole() {
     }
 }
 
-async function toggleDemoRole() {
+// S-FIX C-02: Thay thế toggleDemoRole bằng server-side demo-login (không lộ credentials)
+async function switchDemoRole() {
     const isAdmin = currentUser && currentUser.roles && currentUser.roles.includes('admin');
-    const targetUser = isAdmin ? 'sinhvien' : 'admin';
-    const targetPass = isAdmin ? '123456' : 'admin123';
+    const targetRole = isAdmin ? 'student' : 'admin';
+    const targetLabel = isAdmin ? 'Sinh viên' : 'Quản trị viên';
     try {
-        const res = await fetch('/api/auth/login', {
+        const res = await fetch('/api/auth/demo-login', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({username: targetUser, password: targetPass})
+            body: JSON.stringify({ role: targetRole })
         });
-        const data = await res.json();
         if (res.ok) {
-            if (data.access_token) {
-                localStorage.setItem('token', data.access_token);
-            }
-            showToast(`Đã chuyển sang tài khoản ${isAdmin ? 'Sinh viên' : 'Quản trị viên'} thành công!`, 'success');
-            setTimeout(() => {
-                window.location.reload();
-            }, 300);
+            showToast(`Đã chuyển sang tài khoản ${targetLabel} thành công!`, 'success');
+            setTimeout(() => { window.location.reload(); }, 300);
         } else {
-            showToast('Chuyển đổi thất bại: ' + (data.detail || ''), 'danger');
+            const data = await res.json();
+            showToast(data.detail || 'Chuyển đổi vai trò không khả dụng', 'danger');
         }
     } catch (e) {
         showToast('Lỗi kết nối khi chuyển đổi vai trò', 'danger');
-    }
-}
-
-async function quickLoginAdmin() {
-    try {
-        const res = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: 'admin', password: 'admin123' })
-        });
-        const data = await res.json();
-        if (res.ok && data.access_token) {
-            localStorage.setItem('token', data.access_token);
-            showToast('Đăng nhập Quản trị viên thành công!', 'success');
-            await initUserAndDashboard();
-        } else {
-            showToast('Đăng nhập thất bại: ' + (data.detail || ''), 'danger');
-        }
-    } catch (e) {
-        showToast('Lỗi kết nối khi đăng nhập Admin', 'danger');
     }
 }
 

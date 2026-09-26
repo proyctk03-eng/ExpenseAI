@@ -111,6 +111,8 @@
                     
                     const dateStr = u.created_at ? new Date(u.created_at).toLocaleDateString('vi-VN') : 'N/A';
                     
+                    const safeUsername = escapeHtml(u.username || '');
+                    const safeEmail = escapeHtml(u.email || '-');
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td class="text-muted fw-bold">#${u.id}</td>
@@ -119,10 +121,10 @@
                                 <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center" style="width: 24px; height: 24px; font-size: 10px;">
                                     <i class="fa-solid fa-user"></i>
                                 </div>
-                                ${u.username}
+                                ${safeUsername}
                             </div>
                         </td>
-                        <td>${u.email || '-'}</td>
+                        <td>${safeEmail}</td>
                         <td>${roleBadge}</td>
                         <td><span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3">${u.transaction_count} giao dịch</span></td>
                         <td class="text-muted small">${dateStr}</td>
