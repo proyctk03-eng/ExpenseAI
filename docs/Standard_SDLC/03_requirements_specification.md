@@ -33,6 +33,8 @@
 - **REQ-NF-003 (Hiệu năng):** Thao tác tính toán báo cáo phải sử dụng hàm Aggregation của SQL (`func.sum()`), tránh tải toàn bộ dữ liệu vào RAM Python.
 
 ## 5. YÊU CẦU AI & BẢO MẬT (AI REQUIREMENTS & GUARDRAILS)
-- **REQ-AI-001:** Input vào AI phân loại: Giới hạn độ dài chuỗi nhập để tránh tốn token (VD: max 255 chars).
+- **REQ-AI-001:** Input vào AI phân loại: giới hạn mô tả ở 500 ký tự theo schema hiện hành.
 - **REQ-AI-002:** Output từ AI: Bắt buộc ở định dạng JSON cố định `{"category": "...", "confidence": 0.xx}`.
 - **REQ-AI-003 (Đạo đức dữ liệu):** Đối với tính năng tư vấn, nghiêm cấm truyền dữ liệu giao dịch chi tiết cho máy chủ AI bên thứ 3. Chỉ truyền dữ liệu tổng gộp: (Ví dụ: Ăn uống: 5 triệu, Xăng xe: 1 triệu).
+- **REQ-AI-004 (Đồng ý chia sẻ):** Phân tích hành vi là chức năng riêng. Nó chỉ chạy khi người dùng xác nhận `share_transaction_details=true`, vì có thể truyền mô tả, ngày và số tiền giao dịch tới nhà cung cấp AI.
+- **REQ-F-005:** Hệ thống hỗ trợ quét ảnh hóa đơn bất đồng bộ, feedback ticket, và bộ nhớ danh mục theo từng user. Quản lý ngân sách/cảnh báo ngưỡng chưa thuộc phạm vi hiện tại.

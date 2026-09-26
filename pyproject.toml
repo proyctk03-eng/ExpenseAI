@@ -12,3 +12,6 @@ warn_unused_configs = true
 
 [flake8]
 max-line-length = 88
+
+[tool.pyright]
+extraPaths = ["."]

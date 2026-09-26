@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ExpenseAI - Quản lý chi tiêu thông minh{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}Ứng dụng quản lý chi tiêu cá nhân tích hợp AI tự động phân loại và tư vấn tài chính.{% endblock %}">
+    <!-- SEO: Open Graph -->
+    <meta property="og:title" content="ExpenseAI - Quản lý chi tiêu thông minh">
+    <meta property="og:description" content="Tối ưu hóa mọi dòng tiền thu chi, nhận diện danh mục tự động bằng AI.">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="vi_VN">
+    <!-- SEO: Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="ExpenseAI - Quản lý chi tiêu thông minh">
+    <meta name="twitter:description" content="Ứng dụng quản lý chi tiêu cá nhân tích hợp AI.">
+    <!-- SEO: Canonical -->
+    <link rel="canonical" href="{% block canonical %}{% endblock %}">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text x='16' y='22' font-size='18' text-anchor='middle' fill='white' font-family='Arial'>$</text></svg>">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css?v=20260923">
+    <link rel="stylesheet" href="/static/css/transitions.css">
+    <!-- SEO: Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "ExpenseAI",
+        "description": "Ứng dụng quản lý chi tiêu cá nhân tích hợp AI tự động phân loại và tư vấn tài chính.",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "VND" }
+    }
+    </script>
+</head>
+<body>
+    {% block layout %}
+    <div class="app-wrapper">
+        <!-- Sidebar (AC9: landmark role) -->
+        <aside class="sidebar" id="sidebar" role="navigation" aria-label="Menu điều hướng chính">
+            <div class="sidebar__brand">
+                <i class="fa-solid fa-wallet" aria-hidden="true" style="color: var(--accent-cyan);"></i>
+                <span>Expense<span style="color: var(--accent-cyan);">AI</span></span>
+            </div>
+            <ul class="sidebar__nav">
+                <li class="nav__item">
+                    <a class="nav__link" href="/" id="nav-dashboard" aria-label="Trang tổng quan Dashboard">
+                        <i class="fa-solid fa-chart-pie" aria-hidden="true"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav__item">
+                    <a class="nav__link" href="/transactions" id="nav-transactions" aria-label="Quản lý giao dịch">
+                        <i class="fa-solid fa-exchange-alt" aria-hidden="true"></i> Giao dịch
+                    </a>
+                </li>
+                <li class="nav__item">
+                    <a class="nav__link" href="/stats" id="nav-stats" aria-label="Xem thống kê">
+                        <i class="fa-solid fa-chart-line" aria-hidden="true"></i> Thống kê
+                    </a>
+                </li>
+                <li class="nav__item">
+                    <a class="nav__link" href="/settings" id="nav-settings" aria-label="Cài đặt tài khoản">
+                        <i class="fa-solid fa-gear" aria-hidden="true"></i> Cài đặt
+                    </a>
+                </li>
+                <li class="nav__item">
+                    <a class="nav__link" href="/feedback" id="nav-support" aria-label="Phản hồi và hỗ trợ">
+                        <i class="fa-solid fa-headset" aria-hidden="true"></i> <span id="nav-support-text">Xử lý phản hồi</span>
+                    </a>
+                </li>
+                <li class="nav__item d-none" id="nav-item-admin">
+                    <a class="nav__link" href="/admin" id="nav-admin" aria-label="Quản trị hệ thống">
+                        <i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Quản trị Hệ thống
+                    </a>
+                </li>
+            </ul>
+            <div class="sidebar__footer p-3">
+                <div class="user-profile sidebar-user-profile">
+                    <div class="d-flex align-items-center gap-2 overflow-hidden">
+                        <div class="user-avatar sidebar-user-avatar">
+                            <i class="fa-solid fa-user" aria-hidden="true"></i>
+                        </div>
+                        <div class="user-info text-truncate d-flex flex-column">
+                            <span class="fw-bold text-truncate sidebar-username" id="user-name-display">Đang tải...</span>
+                            <span class="text-muted text-truncate sidebar-email" id="user-email-display"></span>
+                            <span class="badge bg-danger mt-1 d-none align-self-start sidebar-admin-badge" id="user-role-admin">ADMIN</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-link text-muted p-0 sidebar-logout-btn" onclick="logout()" title="Đăng xuất" aria-label="Đăng xuất khỏi tài khoản">
+                        <i class="fa-solid fa-sign-out-alt" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area (AC9: landmark role) -->
+        <div class="main-area">
+            <!-- Mobile Top Bar -->
+            <div class="mobile-topbar" id="mobile-topbar" role="banner">
+                <div class="mobile-topbar__brand">
+                    <i class="fa-solid fa-wallet" aria-hidden="true" style="color: var(--accent-cyan);"></i>
+                    <span>Expense<span style="color: var(--accent-cyan);">AI</span></span>
+                </div>
+                <button class="mobile-topbar__toggle" id="hamburgerBtn" aria-label="Mở menu điều hướng" aria-expanded="false">
+                    <i class="fa-solid fa-bars" aria-hidden="true"></i>
+                </button>
+            </div>
+
+            <!-- Page Content (AC9: main landmark) -->
+            <main class="main-content" id="main-content" role="main">
+                {% block content %}{% endblock %}
+            </main>
+
+            <!-- Footer -->
+            <footer class="app-footer" role="contentinfo">
+                <span>&copy; 2026 ExpenseAI. Made with <span aria-label="tình yêu" style="color: #F87171;">&#10084;&#65039;</span></span>
+            </footer>
+        </div>
+    </div>
+    {% endblock %}
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+
+    <!-- Nút Scroll to Top -->
+    <button class="scroll-top" id="scrollTopBtn" title="Lên đầu trang" aria-label="Cuộn lên đầu trang">
+        <i class="fas fa-arrow-up" aria-hidden="true"></i>
+    </button>
+
+    <!-- Toast Container (AC: proper ARIA) -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 10000" role="status" aria-live="polite">
+        <div id="liveToast" class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMessage">
+                    Thông báo
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Đóng thông báo"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Skip to Content (AC: keyboard navigation) -->
+    <a href="#main-content" class="visually-hidden-focusable" style="position:absolute;top:0;left:0;z-index:99999;padding:8px 16px;background:var(--accent-blue);color:white;">Bỏ qua menu, đến nội dung chính</a>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showToast(message, type = 'primary') {
+            const toastEl = document.getElementById('liveToast');
+            const toastBody = document.getElementById('toastMessage');
+            toastEl.className = `toast align-items-center text-bg-${type} border-0`;
+            toastBody.textContent = message;
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+        }
+
+        // Thay thế fetch API global để tự động xử lý token expiration & gắn token dự phòng
+        const originalFetch = window.fetch;
+        window.fetch = async function(resource, init = {}) {
+            // Tự động gắn Authorization Bearer từ localStorage nếu có
+            const token = localStorage.getItem('token');
+            if (token && typeof resource === 'string' && resource.startsWith('/api/') && !resource.includes('/auth/login') && !resource.includes('/auth/register')) {
+                init = init || {};
+                init.headers = init.headers || {};
+                if (init.headers instanceof Headers) {
+                    if (!init.headers.has('Authorization')) init.headers.set('Authorization', 'Bearer ' + token);
+                } else if (Array.isArray(init.headers)) {
+                    if (!init.headers.some(([k]) => k.toLowerCase() === 'authorization')) init.headers.push(['Authorization', 'Bearer ' + token]);
+                } else {
+                    if (!init.headers['Authorization'] && !init.headers['authorization']) init.headers['Authorization'] = 'Bearer ' + token;
+                }
+            }
+
+            let response = await originalFetch(resource, init);
+            if (response.status === 401 && typeof resource === 'string' && !resource.includes('/auth/login') && !resource.includes('/auth/refresh')) {
+                // Thử gọi refresh token
+                try {
+                    const refreshRes = await originalFetch('/api/auth/refresh', {
+                        method: 'POST'
+                    });
+                    if (refreshRes.ok) {
+                        const refreshData = await refreshRes.json();
+                        if (refreshData && refreshData.access_token) {
+                            localStorage.setItem('token', refreshData.access_token);
+                            // Cập nhật header với token mới
+                            if (init.headers instanceof Headers) {
+                                init.headers.set('Authorization', 'Bearer ' + refreshData.access_token);
+                            } else if (Array.isArray(init.headers)) {
+                                const idx = init.headers.findIndex(([k]) => k.toLowerCase() === 'authorization');
+                                if (idx !== -1) init.headers[idx] = ['Authorization', 'Bearer ' + refreshData.access_token];
+                                else init.headers.push(['Authorization', 'Bearer ' + refreshData.access_token]);
+                            } else if (init.headers) {
+                                init.headers['Authorization'] = 'Bearer ' + refreshData.access_token;
+                            }
+                        }
+                        return originalFetch(resource, init);
+                    }
+                } catch (e) {}
+            }
+            return response;
+        };
+
+        // === XSS Protection: escape HTML trước khi chèn vào DOM ===
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+
+        const isAuthPage = window.location.pathname === '/login' || window.location.pathname === '/register';
+
+        if (!isAuthPage) {
+            // Đánh dấu active menu
+            const path = window.location.pathname;
+            if (path === '/') {
+                document.getElementById('nav-dashboard')?.classList.add('active');
+            } else if (path === '/transactions') {
+                document.getElementById('nav-transactions')?.classList.add('active');
+            } else if (path === '/stats') {
+                document.getElementById('nav-stats')?.classList.add('active');
+            } else if (path === '/settings') {
+                document.getElementById('nav-settings')?.classList.add('active');
+            } else if (path === '/support' || path === '/feedback') {
+                document.getElementById('nav-support')?.classList.add('active');
+            } else if (path === '/admin') {
+                document.getElementById('nav-admin')?.classList.add('active');
+            }
+
+            // Đồng bộ nhãn Sidebar theo vai trò người dùng (Admin: Xử lý phản hồi, User: Phản hồi & Hỗ trợ)
+            fetch('/api/auth/me').then(r => {
+                if (r.ok) return r.json();
+                return null;
+            }).then(u => {
+                if (u) {
+                    const nameEl = document.getElementById('user-name-display');
+                    const emailEl = document.getElementById('user-email-display');
+                    if (nameEl) nameEl.textContent = u.username;
+                    if (emailEl && u.email) emailEl.textContent = u.email;
+                    
+                    if (u.roles && (u.roles.includes('admin') || u.is_admin)) {
+                        const label = document.getElementById('nav-support-text');
+                        if (label) label.textContent = 'Xử lý phản hồi';
+                        
+                        const adminMenu = document.getElementById('nav-item-admin');
+                        if (adminMenu) adminMenu.classList.remove('d-none');
+                        
+                        const badge = document.getElementById('user-role-admin');
+                        if (badge) badge.classList.remove('d-none');
+                    }
+                }
+            }).catch(() => {});
+        }
+
+        // Hamburger toggle (AC: aria-expanded)
+        hamburgerBtn?.addEventListener('click', () => {
+            const isOpen = sidebar?.classList.toggle('sidebar--open');
+            overlay?.classList.toggle('sidebar-overlay--active');
+            hamburgerBtn?.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+        overlay?.addEventListener('click', () => {
+            sidebar?.classList.remove('sidebar--open');
+            overlay?.classList.remove('sidebar-overlay--active');
+            hamburgerBtn?.setAttribute('aria-expanded', 'false');
+        });
+
+        // Global logout function
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+            } catch (e) {
+                console.error('Logout error', e);
+                window.location.href = '/login';
+            }
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

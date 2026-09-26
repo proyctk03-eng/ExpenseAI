@@ -18,11 +18,7 @@
 
 *(Vui lòng thay thế các link ảnh dưới đây bằng ảnh thực tế của bạn)*
 
-![Dashboard](https://via.placeholder.com/800x400.png?text=ExpenseAI+Dashboard)
-*Real-time dashboard with income, expenses, and AI-powered advice.*
-
-![Transactions](https://via.placeholder.com/800x400.png?text=Transaction+Management)
-*Manage your daily transactions effortlessly.*
+Screenshots will be added from a verified local run; placeholder images are intentionally not presented as product evidence.
 
 ---
 
@@ -30,7 +26,7 @@
 
 ### Core Features
 - ✅ **Smart Transaction Management** - Add, edit, delete transactions with ease
-- ✅ **AI-Powered Classification** - Auto-categorize transactions using OpenAI API
+- ✅ **AI-Powered Classification** - Auto-categorize transactions using Gemini first, with OpenAI fallback
 - ✅ **Personalized AI Advice** - Get financial tips based on your spending patterns
 - ✅ **Visual Analytics** - Beautiful charts and graphs (Pie, Bar, Trend)
 - ✅ **Real-time Dashboard** - View your income, expenses, and balance at a glance
@@ -57,7 +53,7 @@
 | Database | PostgreSQL | 15+ |
 | ORM | SQLAlchemy | 2.0+ |
 | Migration | Alembic | 1.13+ |
-| AI Integration | OpenAI API (GPT-4o-mini)| - |
+| AI Integration | Gemini 1.5 Flash; OpenAI GPT-3.5 Turbo fallback | - |
 | Frontend | HTML + CSS + JS (Vanilla)| - |
 | UI Framework | Bootstrap 5 | 5.3+ |
 | Container | Docker + Docker Compose | - |
@@ -76,7 +72,7 @@ cd ExpenseAI
 
 # Copy environment variables
 cp .env.example .env
-# Edit .env with your OpenAI API key
+# Edit .env with a Gemini or OpenAI API key
 # nano .env
 
 # Build and run with Docker Compose
@@ -166,5 +162,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**⭐ Star this repository if you find it useful!**  
-**📧 Contact:** [Your Email/Portfolio Link]
+See [the official technical source of truth](docs/00_SOURCE_OF_TRUTH.md) for the verified architecture, API contract, privacy policy, and current quality status.

@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Quản trị Hệ thống - ExpenseAI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex align-items-center mb-4">
+        <div class="kpi-icon me-3" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red);">
+            <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <h3 class="mb-0 fw-bold" style="color: var(--text-dark);">Quản trị Hệ thống</h3>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row g-4 mb-4" id="adminKpis">
+        <div class="col-md-4">
+            <div class="glass-panel p-4 kpi-card position-relative overflow-hidden">
+                <div class="text-muted small fw-bold text-uppercase mb-1">Tổng Người dùng</div>
+                <h4 class="mb-0 fw-bold" id="kpi-users">--</h4>
+                <div class="kpi-icon position-absolute opacity-25" style="right: 1.5rem; top: 50%; transform: translateY(-50%); font-size: 2.5rem; color: var(--primary-color);">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass-panel p-4 kpi-card position-relative overflow-hidden">
+                <div class="text-muted small fw-bold text-uppercase mb-1">Tổng Giao dịch</div>
+                <h4 class="mb-0 fw-bold" id="kpi-txs">--</h4>
+                <div class="kpi-icon position-absolute opacity-25" style="right: 1.5rem; top: 50%; transform: translateY(-50%); font-size: 2.5rem; color: var(--accent-cyan);">
+                    <i class="fa-solid fa-exchange-alt"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass-panel p-4 kpi-card position-relative overflow-hidden">
+                <div class="text-muted small fw-bold text-uppercase mb-1">Tổng Khối lượng</div>
+                <h4 class="mb-0 fw-bold" id="kpi-volume">-- đ</h4>
+                <div class="kpi-icon position-absolute opacity-25" style="right: 1.5rem; top: 50%; transform: translateY(-50%); font-size: 2.5rem; color: var(--accent-green);">
+                    <i class="fa-solid fa-sack-dollar"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="glass-panel p-4">
+        <h5 class="fw-bold mb-4" style="color: var(--text-dark);">
+            <i class="fa-solid fa-users-gear me-2 text-primary"></i>Danh sách Người dùng
+        </h5>
+        
+        <div class="table-responsive">
+            <table class="table align-middle custom-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Tên đăng nhập</th>
+                        <th>Email</th>
+                        <th>Vai trò</th>
+                        <th>Số giao dịch</th>
+                        <th>Ngày tạo</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">
+                            <i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải dữ liệu...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAdminData();
+    });
+
+    async function loadAdminData() {
+        try {
+            // Load stats
+            const statsRes = await fetch('/api/admin/stats');
+            if (statsRes.ok) {
+                const stats = await statsRes.json();
+                document.getElementById('kpi-users').textContent = stats.total_users.toLocaleString('vi-VN');
+                document.getElementById('kpi-txs').textContent = stats.total_transactions.toLocaleString('vi-VN');
+                document.getElementById('kpi-volume').textContent = new Intl.NumberFormat('vi-VN').format(stats.total_volume) + ' đ';
+            } else if (statsRes.status === 403) {
+                alert('Bạn không có quyền truy cập trang này.');
+                window.location.href = '/';
+                return;
+            }
+
+            // Load users
+            const usersRes = await fetch('/api/admin/users');
+            if (usersRes.ok) {
+                const users = await usersRes.json();
+                const tbody = document.getElementById('usersTableBody');
+                tbody.innerHTML = '';
+                
+                if (users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Không có dữ liệu</td></tr>';
+                    return;
+                }
+
+                users.forEach(u => {
+                    const roleBadge = u.roles.includes('admin') 
+                        ? '<span class="badge bg-danger rounded-pill px-3">ADMIN</span>' 
+                        : '<span class="badge bg-secondary rounded-pill px-3">USER</span>';
+                    
+                    const dateStr = u.created_at ? new Date(u.created_at).toLocaleDateString('vi-VN') : 'N/A';
+                    
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="text-muted fw-bold">#${u.id}</td>
+                        <td class="fw-bold text-dark">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center" style="width: 24px; height: 24px; font-size: 10px;">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                                ${u.username}
+                            </div>
+                        </td>
+                        <td>${u.email || '-'}</td>
+                        <td>${roleBadge}</td>
+                        <td><span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3">${u.transaction_count} giao dịch</span></td>
+                        <td class="text-muted small">${dateStr}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        } catch (e) {
+            console.error('Error loading admin data:', e);
+            document.getElementById('usersTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Lỗi kết nối tới máy chủ.</td></tr>';
+        }
+    }
+</script>
+
+<style>
+    .custom-table {
+        background: transparent;
+        --bs-table-bg: transparent;
+        border-collapse: separate;
+        border-spacing: 0 8px;
+    }
+    .custom-table thead th {
+        border-bottom: none;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        padding: 0 1rem 0.5rem;
+    }
+    .custom-table tbody tr {
+        background: rgba(255, 255, 255, 0.4);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .custom-table tbody tr:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.05);
+        background: rgba(255, 255, 255, 0.9);
+    }
+    .custom-table tbody td {
+        border: none;
+        padding: 1rem;
+        color: var(--text-dark);
+        font-size: 0.9rem;
+    }
+    .custom-table tbody td:first-child {
+        border-top-left-radius: 12px;
+        border-bottom-left-radius: 12px;
+    }
+    .custom-table tbody td:last-child {
+        border-top-right-radius: 12px;
+        border-bottom-right-radius: 12px;
+    }
+</style>
+{% endblock %}

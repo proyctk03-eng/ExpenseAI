@@ -6,7 +6,7 @@
 ---
 
 ## 1. KHỞI ĐỘNG HỆ THỐNG
-Do hệ thống đã được đóng gói chuẩn Docker, Thầy/Cô chỉ cần mở Terminal/Command Prompt tại thư mục dự án và chạy:
+Sao chép `.env.example` thành `.env`, điền ít nhất một khóa AI nếu cần AI trực tuyến, rồi chạy:
 ```bash
 docker-compose up --build
 ```
@@ -30,9 +30,13 @@ Mở trình duyệt Web tại địa chỉ: `http://localhost:8000/docs` để k
 ## 4. TÌM KIẾM VÀ LỌC GIAO DỊCH
 - Trên màn hình danh sách, phía trên cùng có thanh **Filter Bar**.
 - User điền ngày bắt đầu, ngày kết thúc và gõ từ khóa mô tả (Ví dụ: `bún chả`).
-- Bấm **"Lọc"**. Bảng lưới bên dưới sẽ ngay lập tức co cụm lại chỉ hiện đúng những giao dịch khớp điều kiện mà không hề phải Load (Tải) lại toàn bộ trang web (nhờ công nghệ JS Fetch).
+- Bấm **"Lọc"**. Bảng lưới bên dưới chỉ hiện các giao dịch khớp điều kiện mà không tải lại toàn bộ trang.
 
 ## 5. XEM BÁO CÁO VÀ NHẬN TƯ VẤN (AI ADVISORY)
 - Chuyển sang màn hình **Dashboard (Tổng quan)**.
-- Phía bên trái, hệ thống tự động gọi API `GET /reports` và vẽ lên biểu đồ tỷ lệ chi tiêu (Chart.js đẹp mắt).
-- Phía bên phải, khung **"AI Tư vấn"** sẽ tải trong vài giây. Sau khi chạy xong, AI sẽ in ra một đoạn đánh giá ngắn gọn bằng Tiếng Việt dựa trên độ dốc tài chính của chính tài khoản đó (Ví dụ: "Bạn đang chi tiêu quá nhiều cho ăn vặt tuần này, hãy chú ý!").
+- Dashboard gọi các API `/api/reports/summary`, `/api/reports/by_category`, và `/api/reports/monthly_trend` để hiển thị tổng quan.
+- Phía bên phải, khung **"AI Tư vấn"** sẽ tải trong vài giây (gọi API `GET /api/advice/`). Sau khi chạy xong, AI sẽ in ra một đoạn đánh giá ngắn gọn.
+
+## 6. PHÂN TÍCH HÀNH VI VÀ QUYỀN RIÊNG TƯ
+- Lời khuyên AI thông thường chỉ dùng tổng số theo danh mục.
+- Nếu chọn **Phân tích hành vi**, hệ thống hiển thị hộp xác nhận. Chỉ đồng ý khi bạn chấp nhận gửi chi tiết giao dịch cần thiết tới nhà cung cấp AI.

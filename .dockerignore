@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+
+# Environment variables
+.env
+.env.example
+
+# Database
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Documentation and tests
+docs/
+tests/
+
+# Other project-specific
+scratch/
+.agents/

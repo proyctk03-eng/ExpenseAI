@@ -12,12 +12,16 @@ services:
     restart: always
 
   backend:
-    build: .
+    build: 
+      context: .
+      dockerfile: backend/Dockerfile
+    command: sh -c "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port 8000"
     env_file:
-      - .env
+      - backend/.env
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/expenseai
+      - DATABASE_URL=postgresql://expense_admin:expense_pass@postgres:5432/expenseai
       - REDIS_URL=redis://redis:6379/0
+      - CACHE_ENABLED=true
     depends_on:
       - postgres
       - redis
@@ -25,21 +29,21 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
     restart: always
 
   postgres:
     image: postgres:15-alpine
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=expense_admin
+      - POSTGRES_PASSWORD=expense_pass
       - POSTGRES_DB=expenseai
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: always
 
 volumes:
   postgres_data:
+  redis_data:

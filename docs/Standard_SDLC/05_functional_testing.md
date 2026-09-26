@@ -30,4 +30,7 @@ Chúng em đã thiết lập công cụ `pytest` kết hợp thư viện `TestCl
 | TC-AI-04 | Bảo mật dữ liệu cá nhân khi gọi AI | GET /reports/ai-advice | Payload gửi đi là Aggregate `{"Ăn":10, "Xe":5}`, tuyệt đối không có ID và Tên. | PASS |
 
 ## 3. KẾT LUẬN KIỂM THỬ
-Hệ thống vượt qua 100% các Unit Test và Integration Test quan trọng nhất. Đặc biệt, luồng Fallback của AI hoạt động cực kỳ mượt mà, chứng minh hệ thống có độ chịu đựng lỗi (Fault Tolerance) rất tốt. Ứng dụng đã sẵn sàng cho kỳ thi bảo vệ cuối môn học.
+
+Kết quả được xác minh theo lệnh, thời điểm, môi trường và đầu ra thật. Cấu hình kiểm thử đặt cả hai khóa AI thành `mock-api-key-for-testing` và `CACHE_ENABLED=false` để cô lập test khỏi dịch vụ AI và Redis bên ngoài. Cảnh báo deprecation từ thư viện phụ thuộc không làm thay đổi kết quả pass/fail nhưng cần được theo dõi khi nâng cấp.
+
+Không sử dụng số liệu test cũ 35/35 hoặc 36/36. Hiệu năng, độ chính xác AI và độ sẵn sàng chỉ được công bố khi có benchmark hoặc log CI tái lập được.

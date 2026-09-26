@@ -27,11 +27,11 @@
 | **Tuần 5** | Thiết kế (Bài KT 1) | - Thiết kế hướng đối tượng (OOD).<br>- Thiết kế Cơ sở dữ liệu (Database Design). | Phàn Ngọc Anh | Hoàn thành Bài KT 1. Bàn giao ERD. |
 | **Tuần 6** | Lập trình cốt lõi | - Setup Docker, cấu trúc `src/`.<br>- Code Auth JWT, API CRUD chi tiêu. | Nguyễn Tuấn Đạt | Chạy test API bằng Postman. |
 | **Tuần 7** | Lập trình Frontend (Bài KT 2) | - Xây dựng giao diện Bootstrap, Filter.<br>- Hoàn thiện tài liệu User Guide. | Phàn Ngọc Anh | Hoàn thành Bài KT 2. App có giao diện. |
-| **Tuần 8** | Tích hợp AI & Kiểm thử (Bài KT 3) | - Tích hợp OpenAI GPT-3.5 API.<br>- Viết Test case (Functional Testing). | Cả nhóm | Hoàn thành Bài KT 3. AI chạy ổn định. |
+| **Tuần 8** | Tích hợp AI & Kiểm thử (Bài KT 3) | - Tích hợp Gemini 1.5 Flash ưu tiên; OpenAI GPT-3.5 Turbo fallback.<br>- Viết Test case (Functional Testing). | Cả nhóm | Kiểm thử bằng khóa AI giả lập; kết quả phải được ghi theo lần chạy thực tế. |
 | **Tuần 9** | Báo cáo & Bàn giao | - Đóng gói dự án (Docker compose).<br>- Hoàn thiện Báo cáo Cuối kỳ. | Cả nhóm | Thi kết thúc học phần. |
 
 ## 5. Rủi ro & Biện pháp (RISK)
 - **RISK-001:** Mất mạng/API AI phản hồi chậm. -> *Biện pháp:* Dùng Timeout và cơ chế Fallback gán danh mục mặc định "Khác".
-- **RISK-002:** Lộ khóa API Key OpenAI. -> *Biện pháp:* Thiết lập file `.env` và đưa vào `.gitignore`.
+- **RISK-002:** Lộ khóa API AI. -> *Biện pháp:* Thiết lập từ `.env.example`, giữ `.env` ngoài Git và bật kiểm tra secrets trong CI khi có.
 
 *Tài liệu này được sinh tự động từ mã nguồn thực tế của dự án.*
