@@ -5,7 +5,7 @@ from datetime import date
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func as sa_func
 
 from src.database import get_db
@@ -98,7 +98,7 @@ def get_all_feedback(
     if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Chỉ Admin mới có quyền truy cập")
 
-    query = db.query(FeedbackTicket)
+    query = db.query(FeedbackTicket).options(joinedload(FeedbackTicket.user), selectinload(FeedbackTicket.replies))
 
     if status_filter:
         query = query.filter(FeedbackTicket.status == status_filter)
@@ -153,6 +153,7 @@ def get_my_feedback(
     """Người dùng xem danh sách tickets đã gửi."""
     tickets = (
         db.query(FeedbackTicket)
+        .options(joinedload(FeedbackTicket.user), selectinload(FeedbackTicket.replies))
         .filter(FeedbackTicket.user_id == current_user.id)
         .order_by(FeedbackTicket.created_at.desc())
         .all()

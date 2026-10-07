@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.config import ENVIRONMENT
 from src.database import init_db
-from src.api import advice, auth, categories, reports, transactions, web, dashboard, feedback, admin
+from src.api import advice, auth, categories, reports, transactions, web, dashboard, feedback, admin, budgets
 from src.utils.limiter import limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
@@ -100,6 +100,7 @@ app.include_router(dashboard.router)
 app.include_router(advice.router)
 app.include_router(feedback.router)
 app.include_router(admin.router)
+app.include_router(budgets.router)
 
 @app.get("/api")
 def read_root():

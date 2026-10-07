@@ -64,6 +64,23 @@ class GeminiKeyManager:
             logger.warning("Không thể tạo client với Gemini key #%d: %s", self._current_index + 1, e)
             return None
 
+    def get_async_client(self, timeout: float = 15.0, max_retries: int = 1):
+        """Khởi tạo AsyncOpenAI-compatible client cho Google Gemini sử dụng key hiện tại."""
+        from openai import AsyncOpenAI
+        key = self.current_key
+        if not key:
+            return None
+        try:
+            return AsyncOpenAI(
+                api_key=key,
+                base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+                timeout=timeout,
+                max_retries=max_retries,
+            )
+        except Exception as e:
+            logger.warning("Không thể tạo async client với Gemini key #%d: %s", self._current_index + 1, e)
+            return None
+
     def mark_current_key_exhausted(self, reason: str = "") -> bool:
         """Đánh dấu key hiện tại hết hạn hoặc hết quota và chuyển sang key dự phòng tiếp theo.
         Trả về True nếu còn key dự phòng khả dụng, False nếu đã hết toàn bộ Gemini keys.

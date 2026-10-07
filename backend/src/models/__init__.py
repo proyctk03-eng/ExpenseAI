@@ -8,9 +8,10 @@ from .ai_prediction import AIPrediction
 from .user_memory_rule import UserMemoryRule
 from .rbac import Role, Permission, UserRole, RolePermission
 from .feedback import FeedbackTicket, TicketReply
+from .budget import Budget
 
 __all__ = [
     "User", "Category", "Transaction", "AIPrediction", "UserMemoryRule",
     "Role", "Permission", "UserRole", "RolePermission",
-    "FeedbackTicket", "TicketReply",
+    "FeedbackTicket", "TicketReply", "Budget",
 ]

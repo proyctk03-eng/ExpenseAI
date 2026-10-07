@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Ngân sách | ExpenseAI{% endblock %}
+
+{% block content %}
+<style>
+.budget-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.budget-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+.progress-bar-wrapper {
+    position: relative;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
+    height: 14px;
+    overflow: hidden;
+}
+.progress-threshold-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 85%;
+    width: 2px;
+    background: rgba(220, 53, 69, 0.6);
+    z-index: 2;
+}
+.badge-safe {
+    background-color: rgba(25, 135, 84, 0.12);
+    color: #198754;
+    border: 1px solid rgba(25, 135, 84, 0.25);
+}
+.badge-warning {
+    background-color: rgba(255, 193, 7, 0.15);
+    color: #b45309;
+    border: 1px solid rgba(255, 193, 7, 0.35);
+}
+.badge-exceeded {
+    background-color: rgba(220, 53, 69, 0.12);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.25);
+}
+.status-pill {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 20px;
+    font-weight: 600;
+}
+</style>
+
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <div>
+        <h1 class="mb-1"><i class="fa-solid fa-piggy-bank me-2 text-primary"></i>Quản lý Ngân sách</h1>
+        <p class="text-muted mb-0">Thiết lập hạn mức chi tiêu và tự động giám sát ngưỡng cảnh báo an toàn 85%</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <div class="input-group" style="width: auto;">
+            <span class="input-group-text"><i class="fa-regular fa-calendar"></i></span>
+            <input type="month" id="selectedMonth" class="form-control" onchange="loadBudgetData()">
+        </div>
+        <button onclick="openCreateModal()" class="btn btn-glass text-nowrap">
+            <i class="fa-solid fa-plus me-1"></i> Đặt Ngân sách Mới
+        </button>
+    </div>
+</div>
+
+<!-- Alert Banner: Xuất hiện khi có danh mục chạm ngưỡng >=85% hoặc vượt 100% -->
+<div id="budgetAlertBanner" class="alert alert-warning border-warning d-none mb-4 shadow-sm" role="alert">
+    <div class="d-flex align-items-center gap-3">
+        <div class="fs-2 text-warning">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div>
+            <h5 class="alert-heading mb-1 fw-bold">Cảnh Báo Hạn Mức Chi Tiêu!</h5>
+            <div id="alertBannerText" class="mb-0"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary KPI Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="glass-panel p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small fw-semibold">TỔNG HẠN MỨC THÁNG</span>
+                <span class="badge bg-primary-subtle text-primary"><i class="fa-solid fa-shield"></i></span>
+            </div>
+            <h3 class="fw-bold mb-1" id="kpiTotalLimit">0 ₫</h3>
+            <span class="text-muted small" id="kpiBudgetCount">0 hạn mức đã thiết lập</span>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-panel p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small fw-semibold">THỰC TẾ ĐÃ CHI TIÊU</span>
+                <span class="badge bg-danger-subtle text-danger"><i class="fa-solid fa-arrow-trend-up"></i></span>
+            </div>
+            <h3 class="fw-bold mb-1" id="kpiTotalSpent">0 ₫</h3>
+            <span class="text-muted small" id="kpiSpentPercent">0% ngân sách</span>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-panel p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small fw-semibold">SỐ DƯ KHẢ DỤNG CÒN LẠI</span>
+                <span class="badge bg-success-subtle text-success"><i class="fa-solid fa-wallet"></i></span>
+            </div>
+            <h3 class="fw-bold mb-1" id="kpiRemaining">0 ₫</h3>
+            <span class="text-muted small" id="kpiStatusHint">Trạng thái an toàn</span>
+        </div>
+    </div>
+</div>
+
+<!-- Main Budget Progress Card -->
+<div class="glass-panel p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0">Tiến Độ Sử Dụng Ngân Sách Chung</h5>
+        <span class="badge bg-secondary-subtle text-secondary" id="summaryPercentBadge">0%</span>
+    </div>
+    <div class="progress-bar-wrapper mb-2 position-relative">
+        <div class="progress-threshold-marker" title="Ngưỡng cảnh báo 85%"></div>
+        <div id="overallProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
+             role="progressbar" style="width: 0%; height: 100%; transition: width 0.6s ease;"></div>
+    </div>
+    <div class="d-flex justify-content-between text-muted small">
+        <span>0 ₫ (Bắt đầu tháng)</span>
+        <span class="fw-bold text-danger"><i class="fa-solid fa-flag-checkered me-1"></i>Mốc cảnh báo 85%</span>
+        <span id="overallLimitLabel">100% Hạn mức</span>
+    </div>
+</div>
+
+<!-- Category Budgets Grid / List -->
+<div class="glass-panel p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="fw-bold mb-0">Danh Sách Hạn Mức Từng Danh Mục</h5>
+        <span class="text-muted small" id="budgetListCount">0 danh mục</span>
+    </div>
+
+    <div id="emptyBudgetState" class="text-center py-5 d-none">
+        <i class="fa-solid fa-folder-open fs-1 text-muted mb-3 opacity-50"></i>
+        <h5 class="text-muted">Chưa có ngân sách nào cho tháng này</h5>
+        <p class="text-muted small">Nhấn vào nút "Đặt Ngân sách Mới" ở trên để bắt đầu lập kế hoạch tài chính thông minh.</p>
+        <button onclick="openCreateModal()" class="btn btn-glass mt-2">
+            <i class="fa-solid fa-plus me-1"></i> Thiết lập ngay
+        </button>
+    </div>
+
+    <div class="row g-3" id="budgetItemsContainer">
+        <!-- Render bằng JS -->
+    </div>
+</div>
+
+<!-- Modal Thêm / Chỉnh Sửa Ngân Sách -->
+<div class="modal fade" id="budgetModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-light);">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-piggy-bank me-2 text-primary"></i><span id="budgetModalTitle">Thiết Lập Ngân Sách</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="budgetForm" onsubmit="handleBudgetSubmit(event)">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tháng áp dụng</label>
+                        <input type="month" id="formMonth" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Danh mục chi tiêu</label>
+                        <select id="formCategory" class="form-select">
+                            <option value="">-- Toàn bộ chi tiêu (Ngân sách chung) --</option>
+                            <!-- Render categories từ API -->
+                        </select>
+                        <div class="form-text">Chọn một danh mục cụ thể hoặc để trống để áp dụng làm ngân sách trần toàn tháng.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Hạn mức chi tiêu tối đa (VNĐ)</label>
+                        <div class="input-group">
+                            <input type="number" id="formAmountLimit" class="form-control" min="10000" step="10000" placeholder="VD: 5000000" required>
+                            <span class="input-group-text">₫</span>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Ngưỡng cảnh báo tự động (%)</label>
+                        <div class="input-group">
+                            <input type="number" id="formAlertThreshold" class="form-control" min="50" max="95" value="85" required>
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <div class="form-text">Hệ thống sẽ gửi cảnh báo màu vàng khi bạn chi vượt ngưỡng này (khuyến nghị 85%).</div>
+                    </div>
+                    <button type="submit" class="btn btn-glass w-100 py-2">
+                        <i class="fa-solid fa-check me-1"></i> Lưu Ngân Sách
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentBudgets = [];
+let availableCategories = [];
+let modalInstance = null;
+
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    modalInstance = new bootstrap.Modal(document.getElementById('budgetModal'));
+    
+    // Set default month là tháng hiện tại
+    const now = new Date();
+    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    document.getElementById('selectedMonth').value = currentMonthStr;
+    document.getElementById('formMonth').value = currentMonthStr;
+    
+    await loadCategories();
+    await loadBudgetData();
+});
+
+async function loadCategories() {
+    try {
+        const res = await fetch('/api/categories/');
+        if (res.ok) {
+            availableCategories = await res.json();
+            const select = document.getElementById('formCategory');
+            select.innerHTML = '<option value="">-- Toàn bộ chi tiêu (Ngân sách chung) --</option>';
+            availableCategories.forEach(cat => {
+                if (cat.type === 'expense') {
+                    select.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+                }
+            });
+        }
+    } catch (e) {
+        console.error('Lỗi nạp danh mục:', e);
+    }
+}
+
+async function loadBudgetData() {
+    const month = document.getElementById('selectedMonth').value;
+    if (!month) return;
+
+    try {
+        // 1. Lấy dữ liệu chi tiết các ngân sách
+        const res = await fetch(`/api/budgets/?month=${month}`);
+        if (!res.ok) throw new Error('Không tải được danh sách');
+        currentBudgets = await res.json();
+
+        // 2. Lấy dữ liệu tóm tắt tổng thể
+        const resSummary = await fetch(`/api/budgets/summary?month=${month}`);
+        let summary = null;
+        if (resSummary.ok) {
+            summary = await resSummary.json();
+        }
+
+        renderSummary(summary);
+        renderBudgetItems(currentBudgets);
+    } catch (e) {
+        console.error('Lỗi nạp ngân sách:', e);
+        showToast('Không thể tải thông tin ngân sách', 'danger');
+    }
+}
+
+function renderSummary(summary) {
+    if (!summary) return;
+
+    document.getElementById('kpiTotalLimit').textContent = formatCurrency(summary.total_budget);
+    document.getElementById('kpiTotalSpent').textContent = formatCurrency(summary.total_spent);
+    document.getElementById('kpiRemaining').textContent = formatCurrency(summary.remaining_balance);
+    document.getElementById('kpiSpentPercent').textContent = `${summary.percentage}% hạn mức`;
+    document.getElementById('kpiBudgetCount').textContent = `${currentBudgets.length} danh mục được quản lý`;
+    
+    document.getElementById('summaryPercentBadge').textContent = `${summary.percentage}%`;
+    document.getElementById('overallLimitLabel').textContent = `${formatCurrency(summary.total_budget)} Hạn mức`;
+
+    const bar = document.getElementById('overallProgressBar');
+    const pct = Math.min(summary.percentage, 100);
+    bar.style.width = `${pct}%`;
+
+    // Đổi màu thanh tổng thể
+    bar.className = 'progress-bar progress-bar-striped progress-bar-animated';
+    if (summary.status === 'exceeded') {
+        bar.classList.add('bg-danger');
+        document.getElementById('kpiStatusHint').innerHTML = '<span class="text-danger fw-bold"><i class="fa-solid fa-circle-exclamation me-1"></i>Đã vượt ngân sách</span>';
+    } else if (summary.status === 'warning') {
+        bar.classList.add('bg-warning');
+        document.getElementById('kpiStatusHint').innerHTML = '<span class="text-warning fw-bold"><i class="fa-solid fa-triangle-exclamation me-1"></i>Sắp chạm trần (≥85%)</span>';
+    } else {
+        bar.classList.add('bg-success');
+        document.getElementById('kpiStatusHint').innerHTML = '<span class="text-success fw-bold"><i class="fa-solid fa-circle-check me-1"></i>Trong vùng an toàn</span>';
+    }
+
+    // Banner cảnh báo
+    const alertBanner = document.getElementById('budgetAlertBanner');
+    const warningItems = currentBudgets.filter(b => b.status === 'warning' || b.status === 'exceeded');
+    if (warningItems.length > 0) {
+        alertBanner.classList.remove('d-none');
+        const listText = warningItems.map(b => `<strong>${b.category_name || 'Ngân sách chung'}</strong> (${b.percentage}%)`).join(', ');
+        document.getElementById('alertBannerText').innerHTML = `Các khoản: ${listText} đang ở mức báo động hoặc đã vượt quá trần quy định. Hãy cân nhắc hoãn lại các khoản mua sắm không cấp thiết!`;
+    } else {
+        alertBanner.classList.add('d-none');
+    }
+}
+
+function renderBudgetItems(items) {
+    const container = document.getElementById('budgetItemsContainer');
+    const emptyState = document.getElementById('emptyBudgetState');
+    document.getElementById('budgetListCount').textContent = `${items.length} danh mục`;
+
+    if (items.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('d-none');
+        return;
+    }
+
+    emptyState.classList.add('d-none');
+    container.innerHTML = items.map(item => {
+        let badgeClass = 'badge-safe';
+        let badgeText = 'An toàn';
+        let barColor = 'bg-success';
+
+        if (item.status === 'exceeded') {
+            badgeClass = 'badge-exceeded';
+            badgeText = `Vượt hạn mức (${item.percentage}%)`;
+            barColor = 'bg-danger';
+        } else if (item.status === 'warning') {
+            badgeClass = 'badge-warning';
+            badgeText = `Cảnh báo (${item.percentage}%)`;
+            barColor = 'bg-warning';
+        } else {
+            badgeText = `An toàn (${item.percentage}%)`;
+        }
+
+        const barWidth = Math.min(item.percentage, 100);
+        const name = item.category_name || 'Ngân sách Chung (Toàn bộ)';
+
+        return `
+        <div class="col-md-6 col-lg-4">
+            <div class="glass-panel p-3 budget-card h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="p-2 rounded-3 bg-primary-subtle text-primary">
+                                <i class="fa-solid fa-tag"></i>
+                            </div>
+                            <span class="fw-bold fs-6 text-truncate" title="${name}">${name}</span>
+                        </div>
+                        <span class="status-pill ${badgeClass}">${badgeText}</span>
+                    </div>
+
+                    <div class="my-3">
+                        <div class="d-flex justify-content-between text-muted small mb-1">
+                            <span>Đã tiêu: <strong>${formatCurrency(item.spent_amount)}</strong></span>
+                            <span>Trần: <strong>${formatCurrency(item.amount_limit)}</strong></span>
+                        </div>
+                        <div class="progress-bar-wrapper">
+                            <div class="progress-threshold-marker" style="left: ${item.alert_threshold}%;"></div>
+                            <div class="progress-bar ${barColor}" style="width: ${barWidth}%;"></div>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted small mt-1">
+                            <span>Còn lại: <strong>${formatCurrency(item.remaining_amount)}</strong></span>
+                            <span class="text-danger small">Ngưỡng: ${item.alert_threshold}%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 border-top pt-2 mt-2">
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteBudget(${item.id})" title="Xóa ngân sách">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+function openCreateModal() {
+    document.getElementById('budgetForm').reset();
+    document.getElementById('formMonth').value = document.getElementById('selectedMonth').value;
+    document.getElementById('formAlertThreshold').value = 85;
+    modalInstance.show();
+}
+
+async function handleBudgetSubmit(e) {
+    e.preventDefault();
+    const month = document.getElementById('formMonth').value;
+    const catVal = document.getElementById('formCategory').value;
+    const amount_limit = parseFloat(document.getElementById('formAmountLimit').value);
+    const alert_threshold = parseInt(document.getElementById('formAlertThreshold').value);
+
+    const payload = {
+        month: month,
+        category_id: catVal ? parseInt(catVal) : null,
+        amount_limit: amount_limit,
+        alert_threshold: alert_threshold
+    };
+
+    try {
+        const res = await fetch('/api/budgets/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast('Lưu ngân sách thành công!', 'success');
+            modalInstance.hide();
+            document.getElementById('selectedMonth').value = month;
+            await loadBudgetData();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Không thể lưu ngân sách', 'danger');
+        }
+    } catch (e) {
+        showToast('Lỗi kết nối máy chủ', 'danger');
+    }
+}
+
+async function deleteBudget(budgetId) {
+    if (!confirm('Bạn có chắc muốn xóa thiết lập ngân sách này không?')) return;
+
+    try {
+        const res = await fetch(`/api/budgets/${budgetId}`, {
+            method: 'DELETE'
+        });
+
+        if (res.ok) {
+            showToast('Đã xóa ngân sách thành công', 'success');
+            await loadBudgetData();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Không thể xóa', 'danger');
+        }
+    } catch (e) {
+        showToast('Lỗi kết nối khi xóa', 'danger');
+    }
+}
+</script>
+{% endblock %}

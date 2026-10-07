@@ -339,6 +339,147 @@ class TestAIAdvice:
         assert res.status_code == 403
         assert "đồng ý" in res.json()["detail"].lower()
 
+    def test_ai_chat_requires_auth(self):
+        """TC-27b: AI chat không có token phải trả về 401/403."""
+        client.cookies.clear()
+        res = client.post("/api/advice/chat", json={"message": "Tôi nên tiết kiệm thế nào?"})
+        assert res.status_code in [401, 403]
+
+    def test_ai_chat_validation_invalid_role(self):
+        """TC-27c: Chat với role không hợp lệ (không phải user|assistant) trả về 422."""
+        headers, _ = create_test_user()
+        res = client.post(
+            "/api/advice/chat",
+            headers=headers,
+            json={
+                "message": "Xin chào AI",
+                "history": [{"role": "system", "content": "hack"}]
+            }
+        )
+        assert res.status_code == 422
+
+    def test_ai_chat_with_valid_history(self):
+        """TC-27d: Chat với lịch sử hội thoại nhiều lượt hợp lệ."""
+        headers, _ = create_test_user()
+        # Thêm 1 giao dịch để có dữ liệu phân tích
+        client.post("/api/transactions/", headers=headers, json={
+            "amount": 50000,
+            "description": "Cơm trưa văn phòng",
+            "transaction_date": "2026-09-28"
+        })
+        res = client.post(
+            "/api/advice/chat",
+            headers=headers,
+            json={
+                "message": "Nên cắt giảm khoản nào nhất?",
+                "history": [
+                    {"role": "user", "content": "Chào bạn, hãy phân tích chi tiêu của tôi"},
+                    {"role": "assistant", "content": "Chào bạn! Tôi thấy bạn chi tiêu chủ yếu cho Ăn uống."}
+                ]
+            }
+        )
+        assert res.status_code in [200, 400]
+        if res.status_code == 200:
+            assert "reply" in res.json()
+            assert len(res.json()["reply"]) > 0
+
+    def test_get_monthly_analysis_endpoint(self):
+        """TC-27g: Lấy phân tích tài chính theo tháng qua GET /api/advice/monthly."""
+        headers, _ = create_test_user()
+        # Thêm giao dịch cho tháng 2026-09
+        client.post("/api/transactions/", headers=headers, json={
+            "amount": 150000,
+            "description": "Tiền điện nước",
+            "transaction_date": "2026-09-15"
+        })
+        res = client.get("/api/advice/monthly?month=2026-09", headers=headers)
+        assert res.status_code == 200
+        data = res.json()
+        assert data["month"] == "2026-09"
+        assert "has_data" in data
+        assert "analysis" in data
+        assert "summary" in data
+        assert "available_months" in data
+
+    def test_get_monthly_analysis_invalid_format(self):
+        """TC-27h: GET /api/advice/monthly với định dạng tháng sai quy chuẩn phải trả về 422."""
+        headers, _ = create_test_user()
+        res = client.get("/api/advice/monthly?month=2026-9", headers=headers)
+        assert res.status_code == 422
+
+    def test_ai_chat_monthly_queries(self):
+        """TC-27i: Chat AI trả lời thấu đáo các câu hỏi về chi tiêu theo tháng và cực trị."""
+        headers, _ = create_test_user()
+        client.post("/api/transactions/", headers=headers, json={
+            "amount": 2000000,
+            "description": "Tiền thuê nhà",
+            "transaction_date": "2026-09-01"
+        })
+        client.post("/api/transactions/", headers=headers, json={
+            "amount": 500000,
+            "description": "Ăn uống ngoài",
+            "transaction_date": "2026-08-15"
+        })
+
+        # Test hỏi tháng nhiều nhất
+        res = client.post("/api/advice/chat", headers=headers, json={
+            "message": "Tháng nào tôi chi tiêu nhiều nhất?"
+        })
+        assert res.status_code == 200
+        reply = res.json()["reply"]
+        assert len(reply) > 0
+
+        # Test hỏi bình quân
+        res_avg = client.post("/api/advice/chat", headers=headers, json={
+            "message": "Bình quân mỗi tháng tôi tiêu bao nhiêu?"
+        })
+        assert res_avg.status_code == 200
+        assert len(res_avg.json()["reply"]) > 0
+
+        # Test hỏi so sánh
+        res_comp = client.post("/api/advice/chat", headers=headers, json={
+            "message": "So sánh tháng này với tháng trước"
+        })
+        assert res_comp.status_code == 200
+        assert len(res_comp.json()["reply"]) > 0
+
+
+# =============================================
+# 7B. KIỂM TRA QUẢN TRỊ VIÊN (Admin Endpoints)
+# =============================================
+class TestAdminEndpoints:
+    """Kiểm tra quyền truy cập và dữ liệu báo cáo quản trị."""
+
+    def test_admin_endpoints_forbidden_for_regular_user(self):
+        """TC-27e: Người dùng thường không được phép truy cập /api/admin/."""
+        headers, _ = create_test_user()
+        res_users = client.get("/api/admin/users", headers=headers)
+        assert res_users.status_code == 403
+
+        res_stats = client.get("/api/admin/stats", headers=headers)
+        assert res_stats.status_code == 403
+
+    def test_admin_stats_with_admin_user(self):
+        """TC-27f: Admin đăng nhập truy cập /api/admin/stats thành công với cấu trúc chuẩn."""
+        login_res = client.post("/api/auth/login", json={
+            "username": "admin",
+            "password": "admin123"
+        })
+        assert login_res.status_code == 200
+        admin_token = login_res.json()["access_token"]
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+        res = client.get("/api/admin/stats", headers=admin_headers)
+        assert res.status_code == 200
+        data = res.json()
+        assert "total_users" in data
+        assert "total_transactions" in data
+        assert "total_volume" in data
+        assert "total_income" in data
+        assert "total_expense" in data
+        assert data["total_users"] >= 1
+
+
 
 # =============================================
 # 8. KIỂM TRA TRANG WEB (Web Pages)

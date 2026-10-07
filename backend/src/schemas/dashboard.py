@@ -9,6 +9,8 @@ class DashboardSummary(BaseModel):
     start_date: date
     end_date: date
     currency: str = "VND"
+    has_data: bool = True
+    latest_active_month: Optional[str] = None
 
 class MonthlyComparison(BaseModel):
     labels: List[str]

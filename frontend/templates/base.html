@@ -68,6 +68,11 @@
                     </a>
                 </li>
                 <li class="nav__item">
+                    <a class="nav__link" href="/budgets" id="nav-budgets" aria-label="Quản lý ngân sách">
+                        <i class="fa-solid fa-piggy-bank" aria-hidden="true"></i> Ngân sách
+                    </a>
+                </li>
+                <li class="nav__item">
                     <a class="nav__link" href="/settings" id="nav-settings" aria-label="Cài đặt tài khoản">
                         <i class="fa-solid fa-gear" aria-hidden="true"></i> Cài đặt
                     </a>
@@ -234,6 +239,8 @@
                 document.getElementById('nav-transactions')?.classList.add('active');
             } else if (path === '/stats') {
                 document.getElementById('nav-stats')?.classList.add('active');
+            } else if (path === '/budgets') {
+                document.getElementById('nav-budgets')?.classList.add('active');
             } else if (path === '/settings') {
                 document.getElementById('nav-settings')?.classList.add('active');
             } else if (path === '/support' || path === '/feedback') {
@@ -243,8 +250,11 @@
             }
 
             // Đồng bộ nhãn Sidebar theo vai trò người dùng (Admin: Xử lý phản hồi, User: Phản hồi & Hỗ trợ)
+            // S-FIX: Route Guard — chuyển hướng về trang đăng nhập nếu chưa xác thực
             fetch('/api/auth/me').then(r => {
                 if (r.ok) return r.json();
+                // Chưa đăng nhập → chuyển hướng về trang login
+                window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
                 return null;
             }).then(u => {
                 if (u) {
@@ -264,7 +274,9 @@
                         if (badge) badge.classList.remove('d-none');
                     }
                 }
-            }).catch(() => {});
+            }).catch(() => {
+                window.location.href = '/login';
+            });
         }
 
         // Hamburger toggle (AC: aria-expanded)

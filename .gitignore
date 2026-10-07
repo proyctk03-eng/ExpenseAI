@@ -51,3 +51,10 @@ placeholders.txt
 
 # Backups
 docs/backup/
+
+# Reports and Office documents
+*.docx
+*.pdf
+*.pptx
+*.xlsx
+*.csv

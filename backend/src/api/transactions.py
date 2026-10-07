@@ -362,10 +362,13 @@ async def update_transaction(
     if tx_in.category_id is not None: tx.category_id = tx_in.category_id
     if tx_in.transaction_date is not None: tx.transaction_date = tx_in.transaction_date
 
+    updated_tx_id = tx.id  # Lưu ID trước commit vì ORM object có thể bị expired
     try:
         await db.commit()
-        await db.refresh(tx)
-        return tx
+        # Re-query kèm eager load category để trả về category_name chính xác sau khi thay đổi
+        stmt_refresh = select(Transaction).options(joinedload(Transaction.category)).filter(Transaction.id == updated_tx_id)
+        res_refresh = await db.execute(stmt_refresh)
+        return res_refresh.unique().scalars().first()
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail="Lỗi cập nhật giao dịch")

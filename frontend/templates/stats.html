@@ -3,8 +3,13 @@
 {% block title %}Thống kê | ExpenseAI{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Thống kê & Báo cáo</h1>
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <h1 class="mb-0">Thống kê & Báo cáo</h1>
+    <div>
+        <a href="/api/reports/export/excel" class="btn btn-outline-success" id="btnStatsExportExcel" title="Tải file Excel toàn bộ dữ liệu thống kê">
+            <i class="fa-solid fa-file-excel me-1"></i> Xuất Báo Cáo Excel
+        </a>
+    </div>
 </div>
 
 <!-- KPI Cards -->
@@ -70,6 +75,68 @@
             <div id="barContainer" style="position: relative; height:300px; width:100%;">
                 <canvas id="trendChart" role="img" aria-label="Biểu đồ xu hướng chi tiêu theo tháng"></canvas>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Báo cáo & Phân Tích Chuyên Sâu Từng Tháng với AI -->
+<div class="glass-panel p-4 mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div class="kpi-icon" style="background: rgba(139, 92, 246, 0.12); color: #8B5CF6;">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </div>
+            <div>
+                <h5 style="font-weight: 700; color: var(--text-dark); margin: 0;">AI Báo Cáo & Phân Tích Theo Từng Tháng</h5>
+                <small class="text-muted">Chọn tháng để xem chi tiết thu chi, tỷ lệ tiết kiệm 50/30/20 và khuyến nghị tài chính từ AI</small>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <select id="monthlySelect" class="form-select bg-glass border-glass shadow-none" style="min-width: 170px;" onchange="loadMonthlyAiAnalysis(false)">
+                <option value="">Đang tải danh sách tháng...</option>
+            </select>
+            <button id="btnRunMonthlyAnalysis" class="btn btn-primary" onclick="loadMonthlyAiAnalysis(true)">
+                <i class="fa-solid fa-rotate-right me-1" id="iconMonthlyRefresh"></i> Làm mới AI
+            </button>
+        </div>
+    </div>
+
+    <!-- Monthly Metric Badges -->
+    <div id="monthlyMetricsRow" class="row g-3 mb-4 d-none">
+        <div class="col-sm-6 col-lg-3">
+            <div class="p-3 rounded-3" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2);">
+                <div class="text-muted small fw-medium">Tổng Thu Tháng</div>
+                <div id="mMetricIncome" class="fs-5 fw-bold text-success mt-1">0 ₫</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="p-3 rounded-3" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2);">
+                <div class="text-muted small fw-medium">Tổng Chi Tháng</div>
+                <div id="mMetricExpense" class="fs-5 fw-bold text-danger mt-1">0 ₫</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="p-3 rounded-3" style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);">
+                <div class="text-muted small fw-medium">Số Dư Ròng</div>
+                <div id="mMetricBalance" class="fs-5 fw-bold text-primary mt-1">0 ₫</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="p-3 rounded-3" style="background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.2);">
+                <div class="text-muted small fw-medium">Tỷ Lệ Tiết Kiệm</div>
+                <div id="mMetricSavingsRate" class="fs-5 fw-bold" style="color: #8B5CF6;">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Analysis Content Container -->
+    <div id="monthlyAiContainer" class="p-4 rounded-3" style="background: var(--bg-primary); border: 1px solid var(--border-color); min-height: 120px;">
+        <div id="monthlyAiLoading" class="text-center text-muted py-4 d-none">
+            <i class="fa-solid fa-spinner fa-spin fa-2x mb-3 text-primary"></i>
+            <p class="mb-0">AI đang đào sâu phân tích số liệu tài chính tháng...</p>
+        </div>
+        <div id="monthlyAiContent" style="font-size: 0.95rem; line-height: 1.7; color: var(--text-dark);">
+            <p class="text-muted mb-0"><i class="fa-solid fa-circle-info me-2"></i>Chọn một tháng ở trên và nhấn <strong>Làm mới AI</strong> để xem đánh giá chuyên sâu.</p>
         </div>
     </div>
 </div>
@@ -177,6 +244,115 @@ async function loadStats() {
     } catch(e) { console.error(e); }
 }
 
+function formatAdviceText(text) {
+    if (!text) return '';
+    let formatted = escapeHtml(text);
+    // Bold: **text**
+    formatted = formatted.replace(/\*\*([^\*\n]+?)\*\*/g, '<strong>$1</strong>');
+    // Italic: *text*
+    formatted = formatted.replace(/(?<!\*|\b)\*([^\*\n]+?)\*(?!\*)/g, '<em>$1</em>');
+    // Bullet points: dòng bắt đầu bằng * hoặc -
+    formatted = formatted.replace(/(^|\n)\s*[\*\-]\s+/g, '$1• ');
+    // Headings: ### Title
+    formatted = formatted.replace(/(^|\n)###\s*(.+)/g, '$1<h6 class="fw-bold mt-3 mb-2 text-primary">$2</h6>');
+    formatted = formatted.replace(/(^|\n)##\s*(.+)/g, '$1<h5 class="fw-bold mt-3 mb-2">$2</h5>');
+    // Line breaks
+    formatted = formatted.replace(/\n/g, '<br>');
+    return formatted;
+}
+
+let availableMonthsList = [];
+
+async function initMonthlyOptions() {
+    try {
+        const res = await fetch('/api/advice/monthly');
+        if (!res.ok) return;
+        const data = await res.json();
+        const select = document.getElementById('monthlySelect');
+        if (!select) return;
+
+        select.innerHTML = '';
+        availableMonthsList = data.available_months || [];
+
+        if (availableMonthsList.length === 0) {
+            select.innerHTML = '<option value="">Chưa có dữ liệu tháng</option>';
+            return;
+        }
+
+        availableMonthsList.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            const parts = m.split('-');
+            opt.textContent = parts.length === 2 ? `Tháng ${parts[1]}/${parts[0]}` : m;
+            select.appendChild(opt);
+        });
+
+        // Tự động phân tích tháng đầu tiên (tháng mới nhất)
+        if (select.value) {
+            loadMonthlyAiAnalysis(false);
+        }
+    } catch (e) {
+        console.error('Error initializing monthly options:', e);
+    }
+}
+
+async function loadMonthlyAiAnalysis(forceRefresh = false) {
+    const select = document.getElementById('monthlySelect');
+    const month = select ? select.value : '';
+    if (!month) return;
+
+    const loadingEl = document.getElementById('monthlyAiLoading');
+    const contentEl = document.getElementById('monthlyAiContent');
+    const metricsRow = document.getElementById('monthlyMetricsRow');
+    const btn = document.getElementById('btnRunMonthlyAnalysis');
+    const icon = document.getElementById('iconMonthlyRefresh');
+
+    if (loadingEl) loadingEl.classList.remove('d-none');
+    if (contentEl) contentEl.classList.add('d-none');
+    if (btn) btn.disabled = true;
+    if (icon) icon.classList.add('fa-spin');
+
+    try {
+        const url = `/api/advice/monthly?month=${encodeURIComponent(month)}${forceRefresh ? '&force_refresh=true' : ''}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (loadingEl) loadingEl.classList.add('d-none');
+        if (contentEl) contentEl.classList.remove('d-none');
+
+        if (res.ok) {
+            if (data.summary && metricsRow) {
+                metricsRow.classList.remove('d-none');
+                document.getElementById('mMetricIncome').innerText = (data.summary.income || 0).toLocaleString('vi-VN') + ' ₫';
+                document.getElementById('mMetricExpense').innerText = (data.summary.expense || 0).toLocaleString('vi-VN') + ' ₫';
+                
+                const bal = data.summary.balance || 0;
+                const balEl = document.getElementById('mMetricBalance');
+                balEl.innerText = (bal >= 0 ? '+' : '') + bal.toLocaleString('vi-VN') + ' ₫';
+                balEl.className = 'fs-5 fw-bold ' + (bal >= 0 ? 'text-primary' : 'text-danger');
+
+                const rate = data.summary.savings_rate || 0;
+                document.getElementById('mMetricSavingsRate').innerText = `${rate}%`;
+            }
+
+            contentEl.innerHTML = formatAdviceText(data.analysis || 'Chưa có phân tích cho tháng này.');
+        } else {
+            let errMsg = 'Không thể tải phân tích tháng này.';
+            if (typeof data.detail === 'string') errMsg = data.detail;
+            else if (Array.isArray(data.detail)) errMsg = data.detail.map(d => d.msg || JSON.stringify(d)).join('; ');
+            contentEl.innerHTML = `<p class="text-danger mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i>${escapeHtml(errMsg)}</p>`;
+        }
+    } catch (e) {
+        if (loadingEl) loadingEl.classList.add('d-none');
+        if (contentEl) contentEl.classList.remove('d-none');
+        contentEl.innerHTML = '<p class="text-danger mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i>Lỗi kết nối khi tải phân tích AI.</p>';
+    } finally {
+        if (btn) btn.disabled = false;
+        if (icon) icon.classList.remove('fa-spin');
+    }
+}
+
 loadStats();
+initMonthlyOptions();
 </script>
 {% endblock %}

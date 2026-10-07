@@ -73,21 +73,37 @@ class DateRange:
 
 
 def get_date_range(
-    time_range: str = Query("this_month", enum=["today", "this_week", "this_month", "this_year", "all_time", "custom"]),
+    time_range: str = Query("this_month"),
     start_date: str | None = None,
     end_date: str | None = None,
 ) -> DateRange:
-    """Dependency chuyển đổi time_range thành cặp (start_date, end_date)."""
+    """Dependency chuyển đổi time_range thành cặp (start_date, end_date), hỗ trợ cả YYYY-MM và last_month."""
+    import calendar
     today = date.today()
+    last_month_end = today.replace(day=1) - timedelta(days=1)
+    last_month_start = last_month_end.replace(day=1)
+
     ranges = {
         "today": (today, today),
         "this_week": (today - timedelta(days=today.weekday()), today),
         "this_month": (today.replace(day=1), today),
+        "last_month": (last_month_start, last_month_end),
         "this_year": (today.replace(month=1, day=1), today),
         "all_time": (date(2000, 1, 1), today),
     }
     if time_range in ranges:
         return DateRange(*ranges[time_range])
+
+    # Hỗ trợ định dạng tháng cụ thể 'YYYY-MM'
+    if "-" in time_range and len(time_range) == 7:
+        try:
+            parts = time_range.split("-")
+            y, m = int(parts[0]), int(parts[1])
+            _, last_day = calendar.monthrange(y, m)
+            return DateRange(date(y, m, 1), date(y, m, last_day))
+        except Exception:
+            pass
+
     # custom
     return DateRange(
         start=datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else today.replace(day=1),

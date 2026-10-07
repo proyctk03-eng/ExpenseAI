@@ -10,17 +10,26 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 def require_admin(current_user: User = Depends(get_current_user)):
     # Kiểm tra quyền admin
-    if not current_user.is_admin and "admin" not in [r.name for r in current_user.roles]:
+    if not current_user.is_admin and not current_user.has_permission("*:*"):
         raise HTTPException(status_code=403, detail="Không có quyền truy cập chức năng Quản trị.")
     return current_user
 
 @router.get("/users")
 def get_all_users(db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
     """Lấy danh sách tất cả người dùng và số lượng giao dịch của họ."""
-    users = db.query(User).all()
+    from sqlalchemy import func as sa_func
+    from sqlalchemy.orm import joinedload
+
+    # Gộp 1 truy vấn duy nhất thay vì N+1 vòng lặp count
+    rows = (
+        db.query(User, sa_func.count(Transaction.id).label("tx_count"))
+        .outerjoin(Transaction, Transaction.user_id == User.id)
+        .options(joinedload(User.roles))
+        .group_by(User.id)
+        .all()
+    )
     result = []
-    for u in users:
-        tx_count = db.query(Transaction).filter(Transaction.user_id == u.id).count()
+    for u, tx_count in rows:
         roles = [r.name for r in u.roles]
         if u.is_admin and "admin" not in roles:
             roles.append("admin")
@@ -41,13 +50,23 @@ def get_system_stats(db: Session = Depends(get_db), admin_user: User = Depends(r
     total_users = db.query(User).count()
     total_transactions = db.query(Transaction).count()
     
-    total_income = db.query(func.sum(Transaction.amount)).join(Category).filter(Category.type == "income").scalar() or 0
-    total_expense = db.query(func.sum(Transaction.amount)).join(Category).filter(Category.type == "expense").scalar() or 0
+    # Outer join để không bỏ sót giao dịch chưa phân loại (mặc định expense), gom thành 1 query
+    cat_type = func.coalesce(Category.type, "expense")
+    vol_rows = (
+        db.query(cat_type, func.sum(Transaction.amount))
+        .select_from(Transaction)
+        .outerjoin(Category, Transaction.category_id == Category.id)
+        .group_by(cat_type)
+        .all()
+    )
+    totals = {"income": 0.0, "expense": 0.0}
+    for ctype, val in vol_rows:
+        totals[ctype] = float(val or 0)
     
     return {
         "total_users": total_users,
         "total_transactions": total_transactions,
-        "total_volume": float(total_income + total_expense),
-        "total_income": float(total_income),
-        "total_expense": float(total_expense)
+        "total_volume": float(totals["income"] + totals["expense"]),
+        "total_income": totals["income"],
+        "total_expense": totals["expense"]
     }

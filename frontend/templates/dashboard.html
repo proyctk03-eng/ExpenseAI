@@ -3,6 +3,154 @@
 {% block title %}Dashboard | ExpenseAI{% endblock %}
 
 {% block content %}
+<style>
+.typing-cursor {
+    display: inline-block;
+    width: 6px;
+    height: 15px;
+    background-color: var(--accent-blue, #0F67B1);
+    animation: blink 1s step-end infinite;
+    margin-left: 2px;
+    vertical-align: middle;
+}
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+.chat-history-wrapper {
+    position: relative;
+    margin-bottom: 10px;
+    flex: 1 1 auto;
+}
+.chat-history {
+    height: 230px;
+    min-height: 200px;
+    max-height: 250px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 12px 10px 12px 14px;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1.5px solid rgba(15, 103, 177, 0.22);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scroll-behavior: smooth;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+    /* Hỗ trợ Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: #0F67B1 rgba(15, 103, 177, 0.08);
+}
+/* WebKit Scrollbar (Chrome, Edge, Safari, Opera) */
+.chat-history::-webkit-scrollbar {
+    width: 7px;
+}
+.chat-history::-webkit-scrollbar-track {
+    background: rgba(15, 103, 177, 0.06);
+    border-radius: 10px;
+    margin: 4px 0;
+}
+.chat-history::-webkit-scrollbar-thumb {
+    background: rgba(15, 103, 177, 0.55);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+}
+.chat-history::-webkit-scrollbar-thumb:hover {
+    background: #0F67B1;
+}
+.btn-scroll-bottom {
+    position: absolute;
+    right: 14px;
+    bottom: 12px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--accent-blue, #0F67B1);
+    color: #ffffff;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+    transition: all 0.2s ease;
+    z-index: 10;
+    opacity: 0.9;
+}
+.btn-scroll-bottom:hover {
+    opacity: 1;
+    transform: translateY(-2px);
+    background: #0d5a9b;
+}
+.chat-quick-suggestions {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 2px 2px 8px 2px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex-shrink: 0;
+}
+.chat-quick-suggestions::-webkit-scrollbar {
+    display: none;
+}
+.chat-input-wrapper {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid var(--border-color, #E2E8F0);
+    border-radius: 28px;
+    padding: 4px 6px 4px 16px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+.chat-input-wrapper:focus-within {
+    border-color: var(--accent-blue, #0F67B1);
+    box-shadow: 0 0 0 3px rgba(15, 103, 177, 0.15);
+    background: #ffffff;
+}
+.chat-input {
+    flex: 1;
+    border: none !important;
+    background: transparent !important;
+    outline: none !important;
+    box-shadow: none !important;
+    color: var(--text-dark, #1E293B);
+    font-size: 0.9rem;
+    padding: 6px 0;
+}
+.chat-input::placeholder {
+    color: var(--text-muted, #94A3B8);
+}
+.btn-chat-send {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent-blue, #0F67B1);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+.btn-chat-send:hover:not(:disabled) {
+    transform: scale(1.05);
+    background: #0d5a9b;
+}
+.btn-chat-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+</style>
 <div class="page-header d-flex justify-content-between align-items-center">
     <h1>Tổng quan</h1>
     <div class="d-flex gap-2">
@@ -16,6 +164,19 @@
         <button onclick="openCreateModal()" class="btn btn-glass">
             <i class="fa-solid fa-plus"></i> Thêm giao dịch
         </button>
+    </div>
+</div>
+
+<!-- Adaptive Data Alert Banner -->
+<div id="adaptiveMonthBanner" class="alert d-none d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4" style="background: rgba(15, 103, 177, 0.08); border: 1px solid rgba(15, 103, 177, 0.2); border-radius: 12px; color: var(--color-primary); padding: 12px 18px;">
+    <div class="d-flex align-items-center gap-2">
+        <i class="fa-solid fa-circle-info fs-5 text-primary"></i>
+        <span id="adaptiveBannerText">Tháng hiện tại chưa có giao dịch mới.</span>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="switchToLatestMonth()" id="btnSwitchLatest">Xem tháng gần nhất</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="switchToAllTime()">Xem tất cả</button>
+        <button type="button" class="btn btn-sm btn-primary" onclick="openCreateModal()"><i class="fa-solid fa-plus me-1"></i>Thêm giao dịch</button>
     </div>
 </div>
 
@@ -56,6 +217,43 @@
     </div>
 </div>
 
+<!-- Budget Widget -->
+<div class="glass-panel p-4 mb-4" id="budgetWidgetPanel">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: #10B981; width: 38px; height: 38px; font-size: 1.1rem; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-piggy-bank"></i>
+            </div>
+            <div>
+                <h5 class="mb-0 fw-bold" style="color: var(--text-dark);">Hạn Mức Ngân Sách Tháng</h5>
+                <small class="text-muted" id="budgetSubTitle">Theo dõi chi tiêu theo chu kỳ</small>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/budgets" class="btn btn-sm btn-outline-primary" title="Xem trang quản lý ngân sách chi tiết">
+                <i class="fa-solid fa-up-right-from-square me-1"></i>Chi tiết
+            </a>
+            <button class="btn btn-sm btn-glass" onclick="openBudgetModal()">
+                <i class="fa-solid fa-sliders me-1"></i> Thiết lập nhanh
+            </button>
+        </div>
+    </div>
+    <div id="budgetProgressContent">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="small fw-medium" id="budgetLabel" style="color: var(--text-dark);">Đang tải tiến độ ngân sách...</span>
+            <span class="badge rounded-pill px-3 py-1 fs-6" id="budgetPercentBadge" style="background: #10B981; color: white;">0%</span>
+        </div>
+        <div class="progress" style="height: 12px; border-radius: 999px; background: rgba(0,0,0,0.06);">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" id="budgetProgressBar" role="progressbar" style="width: 0%; border-radius: 999px; background: #10B981; transition: width 0.5s ease;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 pt-2 border-top gap-2 small">
+            <div>Đã chi tiêu: <strong id="budgetSpentVal" style="color: #F43F5E; font-size: 0.95rem;">0 ₫</strong></div>
+            <div>Hạn mức tối đa: <strong id="budgetLimitVal" style="color: var(--text-dark); font-size: 0.95rem;">0 ₫</strong></div>
+            <div>Số dư còn lại: <strong id="budgetRemainVal" class="text-success" style="font-size: 0.95rem;">0 ₫</strong></div>
+        </div>
+    </div>
+</div>
+
 <!-- Chart + AI Advice Row -->
 <div class="row g-4 mb-4">
     <div class="col-lg-8">
@@ -75,33 +273,61 @@
     </div>
     <div class="col-lg-4">
         <div class="glass-panel p-4 h-100 ai-advice-box chat-container">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="kpi-icon" style="background: rgba(59,130,246,0.1); color: var(--accent-blue);">
+            <!-- Header -->
+            <div class="d-flex align-items-center justify-content-between mb-3" style="flex-shrink: 0;">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="kpi-icon" style="background: rgba(15, 103, 177, 0.1); color: var(--accent-blue, #0F67B1); width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
                         <i class="fa-solid fa-robot"></i>
                     </div>
-                    <h5 style="font-weight: 700; color: var(--text-dark); margin: 0;">AI Tư vấn</h5>
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="mb-0 fw-bold" style="color: var(--text-dark, #1E293B); font-size: 1.05rem;">AI Tư vấn</h5>
+                            <span class="badge rounded-pill" style="background: rgba(16, 185, 129, 0.12); color: #10B981; font-size: 0.7rem; font-weight: 600; padding: 2px 8px;">
+                                <i class="fa-solid fa-circle me-1" style="font-size: 0.42rem;"></i>Trực tuyến
+                            </span>
+                        </div>
+                        <small class="text-muted" style="font-size: 0.78rem;">Hỏi đáp & phân tích thông minh</small>
+                    </div>
                 </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-outline-secondary" onclick="refreshAiAdvice(true)" id="btnRefreshAiAdvice" title="Tạo gợi ý mới">
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="refreshAiAdvice(true)" id="btnRefreshAiAdvice" title="Làm mới hội thoại" style="border-radius: 8px;">
                         <i class="fa-solid fa-rotate-right" id="iconRefreshAiAdvice"></i>
                     </button>
-                    <button class="btn btn-sm btn-primary" onclick="openBehaviorModal()" id="btnBehavior" title="Phân tích chuỗi hành vi">
+                    <button class="btn btn-sm btn-outline-primary" onclick="openBehaviorModal()" id="btnBehavior" title="Phân tích chuỗi hành vi tiêu dùng" style="border-radius: 8px;">
                         <i class="fa-solid fa-brain"></i>
                     </button>
                 </div>
             </div>
             
-            <div id="aiChatHistory" class="chat-history">
-                <div class="chat-msg chat-msg-ai" id="aiAdvice">
-                    Đang tải dữ liệu...
+            <!-- Chat Messages Body (Scrollable independently with dedicated border & track) -->
+            <div class="chat-history-wrapper">
+                <div id="aiChatHistory" class="chat-history" onscroll="handleChatScroll()">
+                    <div class="chat-msg chat-msg-ai" id="aiAdvice">
+                        👋 <strong>Xin chào!</strong> Tôi là Trợ lý tài chính AI.<br><br>Bạn muốn hỏi gì về tình hình thu chi của mình? Bạn có thể chọn các gợi ý bên dưới hoặc tự nhập câu hỏi trực tiếp.
+                    </div>
                 </div>
+                <button id="btnScrollBottom" class="btn-scroll-bottom d-none" onclick="scrollChatToBottom()" title="Cuộn xuống tin nhắn mới nhất">
+                    <i class="fa-solid fa-arrow-down" style="font-size: 0.8rem;"></i>
+                </button>
             </div>
             
-            <div class="chat-input-wrapper mt-auto">
-                <input type="text" id="chatInput" class="chat-input" placeholder="Hỏi AI (VD: Nên cắt giảm mục nào?)..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
-                <button class="btn-chat-send" onclick="sendChatMessage()" title="Gửi tin nhắn">
-                    <i class="fa-solid fa-paper-plane"></i>
+            <!-- Quick Suggestions (Horizontal scroll) -->
+            <div class="chat-quick-suggestions mb-2" id="chatQuickSuggestions">
+                <button type="button" class="suggestion-pill" onclick="fetchStaticAnalysis(true)" style="background: var(--accent-blue, #0F67B1); color: #ffffff; border-color: var(--accent-blue, #0F67B1); font-weight: 600;">
+                    <i class="fa-solid fa-file-lines me-1"></i>Báo cáo chi tiết
+                </button>
+                <button type="button" class="suggestion-pill" onclick="sendQuickPrompt('Tháng này tôi chi tiêu thế nào?')">📅 Tháng này</button>
+                <button type="button" class="suggestion-pill" onclick="sendQuickPrompt('So sánh tháng này với tháng trước')">⚖️ So với tháng trước</button>
+                <button type="button" class="suggestion-pill" onclick="sendQuickPrompt('Tháng nào tôi chi tiêu nhiều nhất?')">📈 Chi nhiều nhất?</button>
+                <button type="button" class="suggestion-pill" onclick="sendQuickPrompt('Bình quân mỗi tháng tôi tiêu bao nhiêu?')">📊 Bình quân tháng</button>
+                <button type="button" class="suggestion-pill" onclick="sendQuickPrompt('Gợi ý cách tối ưu ngân sách theo 50/30/20')">Tiết kiệm 50/30/20</button>
+            </div>
+            
+            <!-- Chat Input Footer (Pinned to bottom) -->
+            <div class="chat-input-wrapper" id="chatInputWrapper">
+                <input type="text" id="chatInput" class="chat-input" placeholder="Hỏi AI (VD: Tháng 8 tiêu bao nhiêu?)..." autocomplete="off" onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendChatMessage(); }">
+                <button class="btn-chat-send" id="btnChatSend" onclick="sendChatMessage()" title="Gửi tin nhắn">
+                    <i class="fa-solid fa-paper-plane" id="iconChatSend"></i>
                 </button>
             </div>
         </div>
@@ -146,6 +372,52 @@
 
 <!-- Modal Form -->
 {% include "transaction_form.html" %}
+
+<!-- Modal Thiết Lập Ngân Sách -->
+<div class="modal fade" id="budgetModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-light);">
+                <h5 class="modal-title fw-bold" style="color: var(--text-dark);">
+                    <i class="fa-solid fa-piggy-bank me-2" style="color: #10B981;"></i>Thiết Lập Ngân Sách Tháng
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="budgetForm" onsubmit="handleSaveBudget(event)">
+                    <div class="mb-3">
+                        <label class="form-label">Tháng áp dụng</label>
+                        <input type="month" id="budgetMonthInput" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Danh mục ngân sách</label>
+                        <select id="budgetCategorySelect" class="form-select">
+                            <option value="">🎯 Tổng ngân sách toàn bộ chi tiêu</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Hạn mức chi tiêu tối đa (VNĐ)</label>
+                        <div class="input-group">
+                            <input type="number" id="budgetLimitInput" class="form-control" min="1000" step="1000" placeholder="VD: 15000000" required>
+                            <span class="input-group-text">₫</span>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Cảnh báo khi chi tiêu đạt</label>
+                        <select id="budgetThresholdSelect" class="form-select">
+                            <option value="70">70% hạn mức</option>
+                            <option value="80" selected>80% hạn mức (Khuyên dùng)</option>
+                            <option value="90">90% hạn mức</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100" id="btnSaveBudget">
+                        <i class="fa-solid fa-check me-1"></i> Lưu Hạn Mức Ngân Sách
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -166,10 +438,31 @@ async function loadDashboard() {
             document.getElementById('totalIncome').innerText = s.total_income.toLocaleString('vi-VN') + ' ₫';
             document.getElementById('totalExpense').innerText = s.total_expense.toLocaleString('vi-VN') + ' ₫';
             document.getElementById('balance').innerText = s.balance.toLocaleString('vi-VN') + ' ₫';
+
+            const banner = document.getElementById('adaptiveMonthBanner');
+            if (!s.has_data && s.latest_active_month && timeRange === 'this_month') {
+                const bannerText = document.getElementById('adaptiveBannerText');
+                const [ly, lm] = s.latest_active_month.split('-');
+                bannerText.innerHTML = `Tháng hiện tại chưa có giao dịch mới. Bạn có thể xem <strong>Tháng ${lm}/${ly}</strong> gần nhất hoặc xem toàn bộ lịch sử.`;
+                window._latestActiveMonth = s.latest_active_month;
+                banner?.classList.remove('d-none');
+            } else {
+                banner?.classList.add('d-none');
+            }
         } else {
             showToast('Lỗi tải tóm tắt', 'danger');
         }
     } catch (e) { console.error('Summary error:', e); }
+
+    // Load budget widget
+    let budgetMonth = null;
+    if (timeRange.includes('-') && timeRange.length === 7) {
+        budgetMonth = timeRange;
+    } else if (timeRange === 'this_month') {
+        const today = new Date();
+        budgetMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    }
+    await loadBudgetWidget(budgetMonth);
 
     // Load chart
     try {
@@ -261,10 +554,40 @@ async function loadDashboard() {
     } catch (e) { console.error('Recent TX error:', e); }
 }
 
+// Chuẩn hóa và làm sạch công thức LaTeX, ký hiệu bóng đèn và biểu tượng trang trí
+function cleanLatexAndDecorations(str) {
+    if (!str) return '';
+    // Gỡ bỏ biểu tượng cảm xúc bóng đèn 💡 và khoảng trắng thừa
+    let res = str.replace(/💡\s*/g, '');
+    
+    // Xử lý và chuyển đổi công thức LaTeX ($$...$$ hoặc $...$) thành văn bản thuần
+    const sanitizeLatexContent = (inner) => {
+        return inner
+            .replace(/\\text\{([^}]*)\}/g, '$1')
+            .replace(/\\mathbf\{([^}]*)\}/g, '$1')
+            .replace(/\\mathrm\{([^}]*)\}/g, '$1')
+            .replace(/\\mathit\{([^}]*)\}/g, '$1')
+            .replace(/\\times/g, 'x')
+            .replace(/\\div/g, ':')
+            .replace(/\\pm/g, '±')
+            .replace(/\\approx/g, '≈')
+            .replace(/\\cdot/g, '·')
+            .replace(/\\quad/g, ' ')
+            .replace(/\\qquad/g, '  ')
+            .replace(/\\,/g, ' ')
+            .trim();
+    };
+
+    res = res.replace(/\$\$([\s\S]*?)\$\$/g, (match, inner) => sanitizeLatexContent(inner));
+    res = res.replace(/\$([^$\n]+)\$/g, (match, inner) => sanitizeLatexContent(inner));
+    return res;
+}
+
 // S-FIX L-03: Xử lý an toàn Markdown từ AI (Escape HTML trước, định dạng an toàn sau)
 function formatAdviceText(text) {
     if (!text) return '';
-    let formatted = escapeHtml(text);
+    let cleaned = cleanLatexAndDecorations(text);
+    let formatted = escapeHtml(cleaned);
     // Bold: **text**
     formatted = formatted.replace(/\*\*([^\*\n]+?)\*\*/g, '<strong>$1</strong>');
     // Italic: *text* (chỉ khi không phải bullet marker)
@@ -276,99 +599,232 @@ function formatAdviceText(text) {
     return formatted;
 }
 
+let isAiResponding = false;
+
+function handleChatScroll() {
+    const chatHistory = document.getElementById('aiChatHistory');
+    const btnScroll = document.getElementById('btnScrollBottom');
+    if (!chatHistory || !btnScroll) return;
+
+    // Khoảng cách từ vị trí cuộn hiện tại đến đáy
+    const scrollDistanceToBottom = chatHistory.scrollHeight - chatHistory.scrollTop - chatHistory.clientHeight;
+    
+    // Nếu cách đáy hơn 60px, hiển thị nút cuộn xuống dưới
+    if (scrollDistanceToBottom > 60) {
+        btnScroll.classList.remove('d-none');
+    } else {
+        btnScroll.classList.add('d-none');
+    }
+}
+
+function scrollChatToBottom(smooth = true) {
+    const chatHistory = document.getElementById('aiChatHistory');
+    if (!chatHistory) return;
+    if (smooth) {
+        chatHistory.scrollTo({ top: chatHistory.scrollHeight, behavior: 'smooth' });
+    } else {
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+}
+
+async function fetchStaticAnalysis(force = false) {
+    if (isAiResponding) return;
+    
+    const chatHistory = document.getElementById('aiChatHistory');
+    if (!chatHistory) return;
+    
+    const userMsg = document.createElement('div');
+    userMsg.className = 'chat-msg chat-msg-user';
+    userMsg.textContent = '📄 Yêu cầu báo cáo phân tích chi tiết';
+    chatHistory.appendChild(userMsg);
+    
+    const aiMsg = document.createElement('div');
+    aiMsg.className = 'chat-msg chat-msg-ai';
+    aiMsg.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2 text-primary"></i> Đang phân tích dữ liệu chuyên sâu...';
+    chatHistory.appendChild(aiMsg);
+    scrollChatToBottom(false);
+
+    isAiResponding = true;
+    const sendBtn = document.getElementById('btnChatSend');
+    const sendIcon = document.getElementById('iconChatSend');
+    const input = document.getElementById('chatInput');
+    if (sendBtn) sendBtn.disabled = true;
+    if (sendIcon) sendIcon.className = 'fa-solid fa-spinner fa-spin';
+    if (input) input.disabled = true;
+
+    try {
+        const url = force ? '/api/advice/?force_refresh=true' : '/api/advice/';
+        const advRes = await fetch(url, { method: 'POST' });
+        if (advRes.ok) {
+            const advData = await advRes.json();
+            aiMsg.innerHTML = formatAdviceText(advData.advice);
+            if (advData.advice) {
+                chatConversationHistory.push({ role: 'user', content: 'Yêu cầu báo cáo phân tích chi tiết' });
+                chatConversationHistory.push({ role: 'assistant', content: (advData.advice || '').slice(0, 3000) });
+            }
+        } else {
+            const errData = await advRes.json().catch(() => ({}));
+            aiMsg.style.color = 'var(--text-muted)';
+            let errMsg = 'Hãy thêm dữ liệu giao dịch để AI có thể phân tích.';
+            if (typeof errData.detail === 'string') errMsg = errData.detail;
+            else if (Array.isArray(errData.detail)) errMsg = errData.detail.map(d => d.msg || JSON.stringify(d)).join('; ');
+            aiMsg.innerText = errMsg;
+        }
+    } catch (e) {
+        console.error('Advice error:', e);
+        aiMsg.style.color = 'var(--accent-red)';
+        aiMsg.innerText = 'Lỗi kết nối khi tải phân tích.';
+    } finally {
+        isAiResponding = false;
+        if (sendBtn) sendBtn.disabled = false;
+        if (sendIcon) sendIcon.className = 'fa-solid fa-paper-plane';
+        if (input) input.disabled = false;
+        scrollChatToBottom(true);
+    }
+}
+
 async function refreshAiAdvice(force = false) {
     const btn = document.getElementById('btnRefreshAiAdvice');
     const icon = document.getElementById('iconRefreshAiAdvice');
     const chatHistory = document.getElementById('aiChatHistory');
+    const btnScroll = document.getElementById('btnScrollBottom');
     
     if (btn) btn.disabled = true;
     if (icon) icon.className = 'fa-solid fa-spinner fa-spin';
+    chatConversationHistory.length = 0; // Reset lịch sử hội thoại khi làm mới
     
     if (chatHistory) {
         chatHistory.innerHTML = `
             <div class="chat-msg chat-msg-ai" id="aiAdvice">
-                <i class="fa-solid fa-spinner fa-spin me-2 text-primary"></i> Đang phân tích dữ liệu...
+                👋 <strong>Xin chào!</strong> Tôi là Trợ lý tài chính AI.<br><br>Bạn muốn hỏi gì về tình hình thu chi của mình? Bạn có thể chọn các gợi ý bên dưới hoặc tự nhập câu hỏi trực tiếp.
             </div>`;
+        chatHistory.scrollTop = 0;
     }
+    if (btnScroll) btnScroll.classList.add('d-none');
     
-    try {
-        const url = force ? '/api/advice/?force_refresh=true' : '/api/advice/';
-        const advRes = await fetch(url, { method: 'POST' });
-        const adviceEl = document.getElementById('aiAdvice');
-        if (advRes.ok) {
-            const advData = await advRes.json();
-            if (adviceEl) adviceEl.innerHTML = formatAdviceText(advData.advice);
-        } else {
-            const errData = await advRes.json().catch(() => ({}));
-            if (adviceEl) {
-                adviceEl.style.color = 'var(--text-muted)';
-                adviceEl.innerText = errData.detail || 'Hãy thêm dữ liệu giao dịch để AI có thể phân tích.';
-            }
-        }
-    } catch (e) {
-        console.error('Advice error:', e);
-        const adviceEl = document.getElementById('aiAdvice');
-        if (adviceEl) {
-            adviceEl.style.color = 'var(--accent-red)';
-            adviceEl.innerText = 'Lỗi kết nối khi tải lời khuyên AI.';
-        }
-    } finally {
-        if (btn) btn.disabled = false;
-        if (icon) icon.className = 'fa-solid fa-rotate-right';
-        if (chatHistory) chatHistory.scrollTop = chatHistory.scrollHeight;
-    }
+    if (btn) btn.disabled = false;
+    if (icon) icon.className = 'fa-solid fa-rotate-right';
 }
 
+// Lưu lịch sử hội thoại AI trong bộ nhớ phiên
+const chatConversationHistory = [];
+
 async function sendChatMessage() {
+    if (isAiResponding) return;
+
     const input = document.getElementById('chatInput');
-    const message = input.value.trim();
+    const sendBtn = document.getElementById('btnChatSend');
+    const sendIcon = document.getElementById('iconChatSend');
+    const message = input ? input.value.trim() : '';
     if (!message) return;
     
     const chatHistory = document.getElementById('aiChatHistory');
+    if (!chatHistory) return;
     
+    // Thêm tin nhắn của User vào giao diện
     const userMsg = document.createElement('div');
     userMsg.className = 'chat-msg chat-msg-user';
     userMsg.textContent = message;
     chatHistory.appendChild(userMsg);
     
     input.value = '';
+    isAiResponding = true;
+    if (sendBtn) sendBtn.disabled = true;
+    if (sendIcon) sendIcon.className = 'fa-solid fa-spinner fa-spin';
+    if (input) input.disabled = true;
     
-    const typingMsg = document.createElement('div');
-    typingMsg.className = 'chat-typing-indicator';
-    typingMsg.innerHTML = '<div class="chat-typing-dot"></div><div class="chat-typing-dot"></div><div class="chat-typing-dot"></div>';
-    chatHistory.appendChild(typingMsg);
+    // Thêm bong bóng trả lời của AI với hiệu ứng con trỏ gõ chữ
+    const aiMsg = document.createElement('div');
+    aiMsg.className = 'chat-msg chat-msg-ai';
+    aiMsg.innerHTML = '<span class="typing-cursor"></span>';
+    chatHistory.appendChild(aiMsg);
+    scrollChatToBottom(false);
+    handleChatScroll();
     
-    chatHistory.scrollTop = chatHistory.scrollHeight;
+    chatConversationHistory.push({ role: 'user', content: message });
     
     try {
-        const res = await fetch('/api/advice/chat', {
+        const safeHistory = chatConversationHistory.slice(-20).map(m => ({
+            role: m.role,
+            content: (m.content || '').slice(0, 3000)
+        }));
+        
+        const res = await fetch('/api/advice/chat_stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: message })
+            body: JSON.stringify({
+                message: message,
+                history: safeHistory
+            })
         });
         
-        typingMsg.remove();
-        
-        const data = await res.json();
-        const aiMsg = document.createElement('div');
-        aiMsg.className = 'chat-msg chat-msg-ai';
-        if (res.ok) {
-            aiMsg.innerHTML = formatAdviceText(data.reply);
-        } else {
-            aiMsg.textContent = data.detail || 'Xin lỗi, đã xảy ra lỗi.';
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            let errorMsg = 'Xin lỗi, đã xảy ra lỗi.';
+            if (typeof data.detail === 'string') errorMsg = data.detail;
+            aiMsg.textContent = errorMsg;
             aiMsg.style.color = 'var(--accent-red)';
+            return;
         }
-        chatHistory.appendChild(aiMsg);
-        chatHistory.scrollTop = chatHistory.scrollHeight;
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let fullReply = "";
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const dataStr = line.replace('data: ', '').trim();
+                    if (dataStr === '[DONE]') break;
+                    if (!dataStr) continue;
+                    
+                    try {
+                        const dataObj = JSON.parse(dataStr);
+                        if (dataObj.content) {
+                            fullReply += dataObj.content;
+                            aiMsg.innerHTML = formatAdviceText(fullReply) + '<span class="typing-cursor"></span>';
+                            scrollChatToBottom(false);
+                        }
+                    } catch (e) {
+                        console.error('Lỗi parse stream:', e, dataStr);
+                    }
+                }
+            }
+        }
+        
+        // Hoàn tất: gỡ bỏ typing cursor
+        aiMsg.innerHTML = formatAdviceText(fullReply);
+        chatConversationHistory.push({ role: 'assistant', content: fullReply });
+        
     } catch (e) {
-        typingMsg.remove();
-        const aiMsg = document.createElement('div');
-        aiMsg.className = 'chat-msg chat-msg-ai';
+        console.error('Lỗi gọi chat AI:', e);
         aiMsg.textContent = 'Lỗi kết nối tới AI.';
         aiMsg.style.color = 'var(--accent-red)';
-        chatHistory.appendChild(aiMsg);
-        chatHistory.scrollTop = chatHistory.scrollHeight;
+    } finally {
+        isAiResponding = false;
+        if (sendBtn) sendBtn.disabled = false;
+        if (sendIcon) sendIcon.className = 'fa-solid fa-paper-plane';
+        if (input) {
+            input.disabled = false;
+            input.focus();
+        }
+        scrollChatToBottom(true);
+        handleChatScroll();
     }
+}
+
+function sendQuickPrompt(promptText) {
+    if (isAiResponding) return;
+    const input = document.getElementById('chatInput');
+    if (!input) return;
+    input.value = promptText;
+    sendChatMessage();
 }
 
 async function openBehaviorModal() {
@@ -403,6 +859,163 @@ async function openBehaviorModal() {
     }
 }
 
+let budgetModalInstance = null;
+
+function switchToLatestMonth() {
+    if (window._latestActiveMonth) {
+        const sel = document.getElementById('timeRangeSelector');
+        sel.value = window._latestActiveMonth;
+        loadDashboard();
+    }
+}
+
+function switchToAllTime() {
+    const sel = document.getElementById('timeRangeSelector');
+    sel.value = 'all_time';
+    loadDashboard();
+}
+
+async function initAvailableMonths() {
+    try {
+        const res = await fetch('/api/dashboard/available-months');
+        if (res.ok) {
+            const months = await res.json();
+            const selector = document.getElementById('timeRangeSelector');
+            if (months.length > 0) {
+                const existingGroup = selector.querySelector('optgroup[data-dynamic="true"]');
+                if (existingGroup) existingGroup.remove();
+
+                const group = document.createElement('optgroup');
+                group.label = 'Theo Tháng';
+                group.setAttribute('data-dynamic', 'true');
+                months.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.month;
+                    opt.textContent = `${m.label} (${m.count} GD)`;
+                    group.appendChild(opt);
+                });
+                selector.appendChild(group);
+            }
+        }
+    } catch (e) {
+        console.error('Lỗi tải danh sách tháng:', e);
+    }
+}
+
+async function loadBudgetWidget(monthStr) {
+    try {
+        const queryMonth = monthStr || new Date().toISOString().slice(0, 7);
+        const res = await fetch(`/api/budgets/summary?month=${queryMonth}`);
+        if (res.ok) {
+            const data = await res.json();
+            const percentBadge = document.getElementById('budgetPercentBadge');
+            const barEl = document.getElementById('budgetProgressBar');
+            const spentEl = document.getElementById('budgetSpentVal');
+            const limitEl = document.getElementById('budgetLimitVal');
+            const remainEl = document.getElementById('budgetRemainVal');
+            const labelEl = document.getElementById('budgetLabel');
+            const subTitle = document.getElementById('budgetSubTitle');
+
+            if (subTitle && data.month) {
+                const parts = data.month.split('-');
+                subTitle.textContent = `Chu kỳ: Tháng ${parts[1]}/${parts[0]}`;
+            }
+            if (spentEl) spentEl.textContent = data.total_spent.toLocaleString('vi-VN') + ' ₫';
+            if (limitEl) limitEl.textContent = data.total_budget.toLocaleString('vi-VN') + ' ₫';
+            if (remainEl) remainEl.textContent = data.total_remaining.toLocaleString('vi-VN') + ' ₫';
+
+            const pct = Math.min(Math.round(data.overall_percentage), 100);
+            if (percentBadge) percentBadge.textContent = `${data.overall_percentage}%`;
+            if (barEl) barEl.style.width = `${pct}%`;
+
+            if (data.total_budget === 0) {
+                if (labelEl) labelEl.textContent = 'Chưa thiết lập hạn mức ngân sách cho tháng này';
+                if (percentBadge) percentBadge.style.background = '#64748B';
+                if (barEl) barEl.style.background = '#64748B';
+            } else if (data.overall_status === 'exceeded') {
+                if (labelEl) labelEl.textContent = '⚠️ Cảnh báo: Đã vượt quá 100% hạn mức ngân sách!';
+                if (percentBadge) percentBadge.style.background = '#F43F5E';
+                if (barEl) barEl.style.background = '#F43F5E';
+                if (remainEl) remainEl.className = 'text-danger fw-bold';
+            } else if (data.overall_status === 'warning') {
+                if (labelEl) labelEl.textContent = '⚡ Cảnh báo: Chi tiêu đang chạm ngưỡng cảnh báo!';
+                if (percentBadge) percentBadge.style.background = '#F59E0B';
+                if (barEl) barEl.style.background = '#F59E0B';
+                if (remainEl) remainEl.className = 'text-warning fw-bold';
+            } else {
+                if (labelEl) labelEl.textContent = '✅ Chi tiêu trong tầm kiểm soát an toàn';
+                if (percentBadge) percentBadge.style.background = '#10B981';
+                if (barEl) barEl.style.background = '#10B981';
+                if (remainEl) remainEl.className = 'text-success fw-bold';
+            }
+        }
+    } catch (e) {
+        console.error('Lỗi tải widget ngân sách:', e);
+    }
+}
+
+async function openBudgetModal() {
+    const modalEl = document.getElementById('budgetModal');
+    if (!budgetModalInstance) {
+        budgetModalInstance = new bootstrap.Modal(modalEl);
+    }
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    document.getElementById('budgetMonthInput').value = currentMonth;
+
+    // Load categories into budget select
+    try {
+        const res = await fetch('/api/categories/');
+        if (res.ok) {
+            const categories = await res.json();
+            const select = document.getElementById('budgetCategorySelect');
+            select.innerHTML = '<option value="">🎯 Tổng ngân sách toàn bộ chi tiêu</option>';
+            categories.filter(c => c.type === 'expense').forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                select.appendChild(opt);
+            });
+        }
+    } catch(e) {}
+
+    budgetModalInstance.show();
+}
+
+async function handleSaveBudget(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSaveBudget');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang lưu...';
+
+    const month = document.getElementById('budgetMonthInput').value;
+    const catVal = document.getElementById('budgetCategorySelect').value;
+    const amount_limit = parseFloat(document.getElementById('budgetLimitInput').value);
+    const alert_threshold = parseInt(document.getElementById('budgetThresholdSelect').value);
+    const category_id = catVal ? parseInt(catVal) : null;
+
+    try {
+        const res = await fetch('/api/budgets/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ month, amount_limit, alert_threshold, category_id })
+        });
+        if (res.ok) {
+            showToast('Lưu hạn mức ngân sách thành công!', 'success');
+            budgetModalInstance?.hide();
+            await loadBudgetWidget(month);
+        } else {
+            const err = await res.json().catch(() => ({}));
+            showToast(err.detail || 'Lỗi khi lưu ngân sách', 'danger');
+        }
+    } catch (err) {
+        showToast('Lỗi kết nối khi lưu ngân sách', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Lưu Hạn Mức Ngân Sách';
+    }
+}
+
+initAvailableMonths();
 loadDashboard();
 </script>
 {% endblock %}

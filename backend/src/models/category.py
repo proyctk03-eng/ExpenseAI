@@ -24,4 +24,4 @@ class Category(Base):
     is_system: Mapped[bool] = mapped_column(default=False, server_default="false", nullable=False)
 
     user: Mapped[Optional["User"]] = relationship(back_populates="categories")
-    transactions: Mapped[List["Transaction"]] = relationship(back_populates="category", cascade="all, delete-orphan")
+    transactions: Mapped[List["Transaction"]] = relationship(back_populates="category")

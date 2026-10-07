@@ -149,3 +149,15 @@ class TestAIAdviceOptimization:
         advice_surplus = service._generate_rule_based_advice(surplus_data)
         assert "50/30/20" in advice_surplus
         assert "tích lũy" in advice_surplus.lower() or "tiết kiệm" in advice_surplus.lower()
+
+    def test_daily_calculation_fallback(self):
+        """Kiểm tra xử lý tính toán số ngày và chi phí: không chứa LaTeX hay biểu tượng bóng đèn."""
+        service = AIAdviceService()
+        reply = service._generate_intelligent_chat_reply(
+            "tháng 12 ngày nào tôi cũng ăn 100k cơm thì tổng tôi ăn hết bao nhiêu",
+            {"monthly_breakdown": {}}
+        )
+        assert "31 ngày" in reply
+        assert "3.100.000 VNĐ" in reply
+        assert "💡" not in reply
+        assert "$$" not in reply

@@ -50,6 +50,10 @@ def transactions_page(request: Request):
 def stats_page(request: Request):
     return templates.TemplateResponse(request=request, name="stats.html")
 
+@router.get("/budgets", response_class=HTMLResponse)
+def budgets_page(request: Request):
+    return templates.TemplateResponse(request=request, name="budgets.html")
+
 @router.get("/settings", response_class=HTMLResponse)
 def settings_page(request: Request):
     return templates.TemplateResponse(request=request, name="settings.html")
@@ -65,7 +69,7 @@ def admin_page(request: Request, db: Session = Depends(get_db)):
     user = _get_web_user(request, db)
     if not user:
         return RedirectResponse(url="/login?next=/admin", status_code=status.HTTP_303_SEE_OTHER)
-    if not user.is_admin:
+    if not user.is_admin and not user.has_permission("*:*"):
         return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
     return templates.TemplateResponse(request=request, name="admin.html")
 
@@ -86,7 +90,7 @@ Sitemap: /sitemap.xml
 @router.get("/sitemap.xml", response_class=PlainTextResponse)
 def sitemap_xml(request: Request):
     base_url = str(request.base_url).rstrip("/")
-    pages = ["/", "/login", "/register", "/transactions", "/stats", "/feedback"]
+    pages = ["/", "/login", "/register", "/transactions", "/stats", "/budgets", "/feedback"]
     urls = "\n".join(
         f"""  <url>
     <loc>{base_url}{page}</loc>

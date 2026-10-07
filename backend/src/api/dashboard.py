@@ -35,26 +35,68 @@ def get_summary(
         *_user_filter(current_user),
     ]
 
+    # outerjoin: bao gồm giao dịch chưa phân loại (category_id = NULL)
     income = (
         db.query(func.coalesce(func.sum(Transaction.amount), 0))
-        .join(Category)
+        .outerjoin(Category, Transaction.category_id == Category.id)
         .filter(Category.type == "income", *base)
         .scalar()
     )
     expense = (
         db.query(func.coalesce(func.sum(Transaction.amount), 0))
-        .join(Category)
-        .filter(Category.type == "expense", *base)
+        .outerjoin(Category, Transaction.category_id == Category.id)
+        .filter(func.coalesce(Category.type, "expense") == "expense", *base)
         .scalar()
     )
 
+    total_inc = float(income)
+    total_exp = float(expense)
+    has_data = (total_inc > 0 or total_exp > 0)
+    latest_month = None
+    if not has_data:
+        latest_tx = (
+            db.query(Transaction.transaction_date)
+            .filter(*_user_filter(current_user))
+            .order_by(Transaction.transaction_date.desc())
+            .first()
+        )
+        if latest_tx and latest_tx[0]:
+            latest_month = latest_tx[0].strftime("%Y-%m")
+
     return DashboardSummary(
-        total_income=float(income),
-        total_expense=float(expense),
-        balance=float(income - expense),
+        total_income=total_inc,
+        total_expense=total_exp,
+        balance=total_inc - total_exp,
         start_date=date_range.start,
         end_date=date_range.end,
+        has_data=has_data,
+        latest_active_month=latest_month,
     )
+
+
+@router.get("/available-months")
+def get_available_months(
+    current_user: User = Depends(require_permission("report:read")),
+    db: Session = Depends(get_db),
+):
+    """Lấy danh sách các tháng có dữ liệu giao dịch của người dùng."""
+    from sqlalchemy import extract
+    rows = (
+        db.query(
+            extract("year", Transaction.transaction_date).label("y"),
+            extract("month", Transaction.transaction_date).label("m"),
+            func.count(Transaction.id).label("cnt")
+        )
+        .filter(*_user_filter(current_user))
+        .group_by("y", "m")
+        .order_by(extract("year", Transaction.transaction_date).desc(), extract("month", Transaction.transaction_date).desc())
+        .all()
+    )
+    months = []
+    for y, m, cnt in rows:
+        m_str = f"{int(y):04d}-{int(m):02d}"
+        months.append({"month": m_str, "label": f"Tháng {int(m):02d}/{int(y)}", "count": int(cnt)})
+    return months
 
 
 @router.get("/monthly-comparison", response_model=MonthlyComparison)
@@ -75,12 +117,12 @@ def get_monthly_comparison(
         db.query(
             extract("year", Transaction.transaction_date).label("y"),
             extract("month", Transaction.transaction_date).label("m"),
-            Category.type,
+            func.coalesce(Category.type, "expense").label("ctype"),
             func.sum(Transaction.amount),
         )
-        .join(Category)
+        .outerjoin(Category, Transaction.category_id == Category.id)
         .filter(*base)
-        .group_by("y", "m", Category.type)
+        .group_by("y", "m", "ctype")
         .order_by("y", "m")
         .all()
     )
@@ -105,19 +147,19 @@ def get_category_breakdown(
     current_user: User = Depends(require_permission("report:read")),
     db: Session = Depends(get_db),
 ):
-    """Lấy phân bổ chi tiêu theo danh mục."""
-    base = [
-        Category.type == "expense",
-        Transaction.transaction_date >= date_range.start,
-        Transaction.transaction_date <= date_range.end,
-        *_user_filter(current_user),
-    ]
-
     results = (
-        db.query(Category.name, func.sum(Transaction.amount).label("total"))
-        .join(Transaction)
-        .filter(*base)
-        .group_by(Category.name)
+        db.query(
+            func.coalesce(Category.name, "Chưa phân loại").label("cname"),
+            func.sum(Transaction.amount).label("total"),
+        )
+        .outerjoin(Category, Transaction.category_id == Category.id)
+        .filter(
+            func.coalesce(Category.type, "expense") == "expense",
+            Transaction.transaction_date >= date_range.start,
+            Transaction.transaction_date <= date_range.end,
+            *_user_filter(current_user),
+        )
+        .group_by("cname")
         .order_by(func.sum(Transaction.amount).desc())
         .all()
     )
