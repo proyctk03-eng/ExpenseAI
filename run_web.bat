@@ -20,7 +20,7 @@ if not exist "venv\Scripts\python.exe" (
 
 :: Kiểm tra tính toàn vẹn của các thư viện phụ thuộc
 echo [INFO] Đang kiểm tra các thư viện phụ thuộc...
-venv\Scripts\python.exe -c "import fastapi, uvicorn, sqlalchemy, pydantic, jinja2, jose, slowapi" >nul 2>&1
+venv\Scripts\python.exe -c "import fastapi, uvicorn, sqlalchemy, pydantic, jinja2, jwt, slowapi" >nul 2>&1
 if %errorlevel% neq 0 (
     echo [CẢNH BÁO] Phát hiện thiếu một số thư viện Python cần thiết.
     echo [INFO] Đang tự động tiến hành cài đặt từ backend\requirements.txt...

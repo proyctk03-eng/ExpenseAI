@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from src.utils.limiter import limiter
-from jose import jwt, JWTError
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
 from src.config import SECRET_KEY, ALGORITHM
 
 from src.database import get_db

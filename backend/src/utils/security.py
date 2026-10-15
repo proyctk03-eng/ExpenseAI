@@ -3,7 +3,7 @@ import logging
 
 import bcrypt
 from datetime import datetime, timedelta, timezone
-from jose import jwt
+import jwt
 
 from src.config import SECRET_KEY, ALGORITHM
 

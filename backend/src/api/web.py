@@ -5,7 +5,8 @@ from fastapi import APIRouter, Request, Depends, status
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from jose import jwt, JWTError
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
 
 from src.config import SECRET_KEY, ALGORITHM
 from src.database import get_db

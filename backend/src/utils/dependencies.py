@@ -6,7 +6,8 @@ from typing import Callable
 
 from fastapi import Depends, HTTPException, Query, status, Request
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
 from sqlalchemy.orm import Session
 
 from src.config import SECRET_KEY, ALGORITHM
