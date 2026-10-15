@@ -138,7 +138,6 @@ ExpenseAI/
 │   └── nginx.conf                 # Cấu hình Nginx Reverse Proxy & Secure Headers
 ├── docker-compose.yml             # Cấu hình triển khai hệ thống (Nginx + App + Postgres + Redis)
 ├── pyproject.toml                 # Cấu hình Linting & Code Style
-├── requirements.txt               # Thư viện gốc thuận tiện cài đặt
 └── README.md                      # Tài liệu hướng dẫn sử dụng
 ```
 

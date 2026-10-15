@@ -16,7 +16,7 @@ Thank you for considering contributing to ExpenseAI! We welcome all contribution
 ### Development Setup
 1. Fork the repository and clone your fork.
 2. Create a virtual environment: `python -m venv venv`
-3. Install dependencies: `pip install -r requirements.txt`
+3. Install dependencies: `pip install -r backend/requirements.txt`
 4. Set up your `.env` file based on `.env.example`.
 5. Run migrations: `alembic upgrade head`
 6. Run the local server: `uvicorn src.main:app --reload`
