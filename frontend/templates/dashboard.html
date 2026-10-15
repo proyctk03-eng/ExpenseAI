@@ -472,7 +472,23 @@ async function loadDashboard() {
 
             if (catData.data.length === 0) {
                 document.getElementById('expenseChart').style.display = 'none';
-                document.getElementById('noDataMsg').classList.remove('d-none');
+                const noDataMsg = document.getElementById('noDataMsg');
+                noDataMsg.classList.remove('d-none');
+                if (window._latestActiveMonth && timeRange === 'this_month') {
+                    const [ly, lm] = window._latestActiveMonth.split('-');
+                    noDataMsg.innerHTML = `
+                        <div class="empty-state__icon"><i class="fa-solid fa-chart-pie"></i></div>
+                        <p class="empty-state__text mb-2">Tháng này chưa phát sinh giao dịch mới.</p>
+                        <div class="d-flex justify-content-center gap-2 mt-2">
+                            <button type="button" class="btn btn-primary btn-sm rounded-pill px-3" onclick="switchToLatestMonth()">
+                                <i class="fa-solid fa-calendar-check me-1"></i> Xem Tháng ${lm}/${ly} gần nhất
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="switchToAllTime()">
+                                Xem tất cả
+                            </button>
+                        </div>
+                    `;
+                }
             } else {
                 document.getElementById('expenseChart').style.display = 'block';
                 document.getElementById('noDataMsg').classList.add('d-none');
@@ -498,7 +514,18 @@ async function loadDashboard() {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { position: 'right', labels: { padding: 16, usePointStyle: true } } },
+                        plugins: {
+                            legend: { position: 'right', labels: { padding: 16, usePointStyle: true } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed || 0;
+                                        return ` ${label}: ${value.toLocaleString('vi-VN')} ₫`;
+                                    }
+                                }
+                            }
+                        },
                         cutout: '65%'
                     }
                 });
@@ -863,6 +890,14 @@ let budgetModalInstance = null;
 function switchToLatestMonth() {
     if (window._latestActiveMonth) {
         const sel = document.getElementById('timeRangeSelector');
+        let opt = sel.querySelector(`option[value="${window._latestActiveMonth}"]`);
+        if (!opt) {
+            opt = document.createElement('option');
+            opt.value = window._latestActiveMonth;
+            const parts = window._latestActiveMonth.split('-');
+            opt.textContent = `Tháng ${parts[1]}/${parts[0]} (Gần nhất)`;
+            sel.appendChild(opt);
+        }
         sel.value = window._latestActiveMonth;
         loadDashboard();
     }
@@ -1014,7 +1049,9 @@ async function handleSaveBudget(e) {
     }
 }
 
-initAvailableMonths();
-loadDashboard();
+(async function() {
+    await initAvailableMonths();
+    await loadDashboard();
+})();
 </script>
 {% endblock %}

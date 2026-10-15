@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func as sa_func
 
 from src.database import get_db
-from src.models import FeedbackTicket, TicketReply, User
+from src.models import FeedbackTicket, TicketReply, User, Role
 from src.schemas.feedback import (
     FeedbackCreate, FeedbackResponse, FeedbackDetailResponse,
     FeedbackStatusUpdate, ReplyCreate, ReplyResponse,
@@ -76,6 +76,35 @@ def create_feedback(
     db.commit()
     db.refresh(ticket)
     logger.info("User %s created feedback ticket #%d", current_user.username, ticket.id)
+
+    # Tự động gửi phản hồi xác nhận tiếp nhận từ Ban Quản trị / Hệ thống (Auto-Reply)
+    admin_user = (
+        db.query(User)
+        .filter(User.roles.any(Role.name == "admin"))
+        .order_by(User.id.asc())
+        .first()
+    )
+    admin_id = admin_user.id if admin_user else current_user.id
+    topic_labels = {
+        "bug": "Báo cáo sự cố hệ thống",
+        "feature": "Góp ý phát triển tính năng",
+        "complaint": "Khiếu nại dịch vụ",
+        "other": "Ý kiến đóng góp khác",
+    }
+    topic_str = topic_labels.get(ticket.topic, "Hỗ trợ")
+    auto_reply_text = (
+        f"Chào bạn {current_user.username}! Hệ thống ExpenseAI đã tiếp nhận phản hồi về '{topic_str}'. "
+        f"Ban Quản trị đã ghi nhận yêu cầu và sẽ kiểm tra, phản hồi trong thời gian sớm nhất. "
+        f"Cảm ơn bạn đã đóng góp ý kiến xây dựng hệ thống!"
+    )
+    auto_reply = TicketReply(
+        ticket_id=ticket.id,
+        user_id=admin_id,
+        message=auto_reply_text,
+    )
+    db.add(auto_reply)
+    db.commit()
+    db.refresh(ticket)
     return _ticket_to_response(ticket)
 
 
@@ -256,3 +285,56 @@ def create_reply(
     db.refresh(reply)
     logger.info("User %s replied to ticket #%d", current_user.username, ticket_id)
     return _reply_to_response(reply)
+
+
+# ──────────────────────────────────────────────
+#  Admin: Tự động trả lời ticket theo ngữ cảnh
+# ──────────────────────────────────────────────
+@router.post("/{ticket_id}/auto-reply", response_model=ReplyResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute")
+def trigger_admin_auto_reply(
+    request: Request,
+    ticket_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Admin: Tự động tạo và gửi câu trả lời chuẩn ngữ cảnh cho ticket."""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Chỉ Admin mới có quyền thực hiện trả lời tự động")
+
+    ticket = db.query(FeedbackTicket).filter(FeedbackTicket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Không tìm thấy ticket")
+
+    topic_responses = {
+        "bug": (
+            f"Chào bạn {ticket.user.username}, Ban Kỹ thuật đã xác nhận mã lỗi '{ticket.subject}'. "
+            f"Sự cố đã được chuyển cho đội ngũ kỹ sư xử lý và sẽ được khắc phục trong bản phát hành cập nhật tới."
+        ),
+        "feature": (
+            f"Chào bạn {ticket.user.username}, cảm ơn ý tưởng rất thiết thực của bạn! "
+            f"Đề xuất tính năng này đã được đưa vào lộ trình phát triển của ExpenseAI."
+        ),
+        "complaint": (
+            f"Chào bạn {ticket.user.username}, Ban Quản trị ExpenseAI rất lấy làm tiếc về sự bất tiện của bạn. "
+            f"Nội dung phản ánh đã được tiếp nhận và xử lý ưu tiên để cải thiện chất lượng dịch vụ."
+        ),
+        "other": (
+            f"Chào bạn {ticket.user.username}, Ban Quản trị ExpenseAI đã xem xét nội dung trao đổi của bạn. "
+            f"Mọi ý kiến của bạn đã được ghi nhận. Chúc bạn một ngày làm việc hiệu quả!"
+        ),
+    }
+    reply_content = topic_responses.get(ticket.topic, topic_responses["other"])
+    reply = TicketReply(
+        ticket_id=ticket.id,
+        user_id=current_user.id,
+        message=reply_content,
+    )
+    db.add(reply)
+    if ticket.status == "pending":
+        ticket.status = "in_progress"
+    db.commit()
+    db.refresh(reply)
+    logger.info("Admin %s generated auto-reply for ticket #%d", current_user.username, ticket_id)
+    return _reply_to_response(reply)
+

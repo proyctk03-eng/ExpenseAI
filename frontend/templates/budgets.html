@@ -231,7 +231,7 @@ async function loadCategories() {
             select.innerHTML = '<option value="">-- Toàn bộ chi tiêu (Ngân sách chung) --</option>';
             availableCategories.forEach(cat => {
                 if (cat.type === 'expense') {
-                    select.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+                    select.innerHTML += `<option value="${cat.id}">${escapeHtml(cat.name)}</option>`;
                 }
             });
         }

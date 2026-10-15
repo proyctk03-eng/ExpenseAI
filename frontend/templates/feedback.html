@@ -8,13 +8,13 @@
     <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
             <div class="d-flex align-items-center gap-2 mb-1">
-                <h1 class="h3 fw-bold mb-0 text-dark" id="pageMainTitle">Xử lý phản hồi</h1>
-                <span class="badge badge-admin-hub" id="roleBadge">
-                    <i class="fa-solid fa-shield-halved me-1"></i> Admin Hub
+                <h1 class="h3 fw-bold mb-0 text-dark" id="pageMainTitle">Phản hồi & Hỗ trợ</h1>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle" id="roleBadge">
+                    <i class="fa-solid fa-user-graduate me-1"></i> Sinh viên
                 </span>
             </div>
             <p class="text-muted mb-0 small" id="pageSubTitle">
-                Tiếp nhận, phân loại và phản hồi trực tiếp các yêu cầu hỗ trợ từ người dùng
+                Gửi ý kiến đóng góp, báo lỗi và theo dõi tiến độ giải quyết từ Ban Quản trị
             </p>
         </div>
         <div class="d-flex align-items-center gap-2">
@@ -30,7 +30,7 @@
         </div>
     </div>
 
-    <div class="row g-3 mb-4" id="kpiStatsRow">
+    <div class="row g-3 mb-4 d-none" id="kpiStatsRow">
         <div class="col-6 col-md-3 col-xl">
             <div class="glass-panel kpi-stat-card stat-total" onclick="applyStatusFilterQuick('')" role="button" title="Xem tất cả phản hồi">
                 <div class="kpi-stat-icon text-primary bg-primary-subtle">
@@ -89,7 +89,7 @@
     </div>
 
     <!-- Smart Filter Bar (Bộ lọc thông minh) -->
-    <div class="glass-panel p-3 mb-4 shadow-sm" id="filterCard">
+    <div class="glass-panel p-3 mb-4 shadow-sm d-none" id="filterCard">
         <div class="row g-2 align-items-center">
             <!-- Search -->
             <div class="col-12 col-md-4 col-lg-3">
@@ -141,7 +141,7 @@
         <div class="d-flex justify-content-between align-items-center px-4 py-3 border-bottom bg-white">
             <div class="fw-bold text-dark d-flex align-items-center gap-2">
                 <i class="fa-solid fa-list-check text-primary"></i>
-                <span id="tableTitleText">Danh sách phản hồi người dùng</span>
+                <span id="tableTitleText">Phản hồi của tôi</span>
                 <span class="badge bg-secondary-subtle text-secondary rounded-pill ms-1" id="ticketsCountBadge">0</span>
             </div>
             <div class="small text-muted" id="filterStatusHint">
@@ -207,7 +207,7 @@
             </div>
 
             <!-- Quick Status Switcher Bar (Admin Only) -->
-            <div class="px-4 py-2 bg-light border-bottom d-flex align-items-center justify-content-between gap-2 flex-wrap" id="adminStatusActionRow">
+            <div class="px-4 py-2 bg-light border-bottom d-flex align-items-center justify-content-between gap-2 flex-wrap d-none" id="adminStatusActionRow">
                 <div class="d-flex align-items-center gap-2 small">
                     <span class="fw-semibold text-muted"><i class="fa-solid fa-tag me-1"></i>Trạng thái xử lý:</span>
                     <select id="modalStatusSelect" class="form-select form-select-sm status-dropdown-select" onchange="updateTicketStatusFromModal()">
@@ -263,11 +263,14 @@
                 </div>
 
                 <!-- Quick Response Templates for Admin -->
-                <div class="quick-templates-section mb-3" id="quickTemplatesBlock">
+                <div class="quick-templates-section mb-3 d-none" id="quickTemplatesBlock">
                     <div class="small fw-semibold text-muted mb-1">
                         <i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> Mẫu phản hồi nhanh:
                     </div>
                     <div class="d-flex flex-wrap gap-1">
+                        <button type="button" class="btn btn-primary btn-sm btn-quick-template" onclick="triggerAutoReplyFromModal()" title="Hệ thống tự động phân tích chủ đề và gửi câu trả lời chuẩn ngay lập tức">
+                            <i class="fa-solid fa-robot me-1"></i> Trả lời tự động
+                        </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm btn-quick-template" onclick="applyTemplate(0)">
                             <i class="fa-solid fa-hand me-1 text-primary"></i> Đã tiếp nhận
                         </button>
@@ -1142,6 +1145,25 @@ async function submitReply() {
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Gửi phản hồi';
+    }
+}
+
+async function triggerAutoReplyFromModal() {
+    if (!currentActiveTicketId) return;
+    try {
+        const res = await fetch(`/api/feedback/${currentActiveTicketId}/auto-reply`, {
+            method: 'POST'
+        });
+        if (res.ok) {
+            showToast('Đã kích hoạt và gửi phản hồi tự động thành công!', 'success');
+            await openCommunicationModal(currentActiveTicketId);
+            await reloadFeedbackData();
+        } else {
+            const err = await res.json().catch(() => ({}));
+            showToast(err.detail || 'Không thể tạo phản hồi tự động', 'danger');
+        }
+    } catch (e) {
+        showToast('Lỗi kết nối khi gửi phản hồi tự động', 'danger');
     }
 }
 

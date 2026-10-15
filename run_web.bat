@@ -18,6 +18,24 @@ if not exist "venv\Scripts\python.exe" (
     )
 )
 
+:: Kiểm tra tính toàn vẹn của các thư viện phụ thuộc
+echo [INFO] Đang kiểm tra các thư viện phụ thuộc...
+venv\Scripts\python.exe -c "import fastapi, uvicorn, sqlalchemy, pydantic, jinja2, jose, slowapi" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [CẢNH BÁO] Phát hiện thiếu một số thư viện Python cần thiết.
+    echo [INFO] Đang tự động tiến hành cài đặt từ backend\requirements.txt...
+    venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+    if %errorlevel% neq 0 (
+        echo [LỖI] Quá trình cài đặt thư viện không thành công. Vui lòng kiểm tra kết nối mạng.
+        pause
+        exit /b 1
+    )
+    echo [OK] Đã cài đặt hoàn tất các thư viện cần thiết!
+) else (
+    echo [OK] Toàn bộ thư viện phụ thuộc đã sẵn sàng.
+)
+echo.
+
 :: Kiểm tra xem cổng 8000 đã có tiến trình nào đang lắng nghe chưa
 netstat -ano | findstr /R /C:":8000 .*LISTENING" >nul 2>&1
 if %errorlevel% equ 0 (
