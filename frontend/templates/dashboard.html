@@ -303,7 +303,7 @@
             <div class="chat-history-wrapper">
                 <div id="aiChatHistory" class="chat-history" onscroll="handleChatScroll()">
                     <div class="chat-msg chat-msg-ai" id="aiAdvice">
-                        👋 <strong>Xin chào!</strong> Tôi là Trợ lý tài chính AI.<br><br>Bạn muốn hỏi gì về tình hình thu chi của mình? Bạn có thể chọn các gợi ý bên dưới hoặc tự nhập câu hỏi trực tiếp.
+                        <strong>Xin chào!</strong> Tôi là Trợ lý tài chính AI.<br><br>Bạn muốn hỏi gì về tình hình thu chi của mình? Bạn có thể chọn các gợi ý bên dưới hoặc tự nhập câu hỏi trực tiếp.
                     </div>
                 </div>
                 <button id="btnScrollBottom" class="btn-scroll-bottom d-none" onclick="scrollChatToBottom()" title="Cuộn xuống tin nhắn mới nhất">
@@ -316,10 +316,10 @@
                 <button type="button" class="suggestion-pill" onclick="fetchStaticAnalysis(true)" style="background: var(--accent-blue, #0F67B1); color: #ffffff; border-color: var(--accent-blue, #0F67B1); font-weight: 600;">
                     <i class="fa-solid fa-file-lines me-1"></i>Báo cáo chi tiết
                 </button>
-                <button type="button" class="suggestion-pill" onclick="sendQuickPrompt('Tháng này tôi chi tiêu thế nào?')">📅 Tháng này</button>
-                <button type="button" class="suggestion-pill" onclick="sendQuickPrompt('So sánh tháng này với tháng trước')">⚖️ So với tháng trước</button>
-                <button type="button" class="suggestion-pill" onclick="sendQuickPrompt('Tháng nào tôi chi tiêu nhiều nhất?')">📈 Chi nhiều nhất?</button>
-                <button type="button" class="suggestion-pill" onclick="sendQuickPrompt('Bình quân mỗi tháng tôi tiêu bao nhiêu?')">📊 Bình quân tháng</button>
+                <button type="button" class="suggestion-pill" onclick="sendQuickPrompt('Tháng này tôi chi tiêu thế nào?')"><i class="fa-regular fa-calendar me-1"></i>Tháng này</button>
+                <button type="button" class="suggestion-pill" onclick="sendQuickPrompt('So sánh tháng này với tháng trước')"><i class="fa-solid fa-scale-balanced me-1"></i>So với tháng trước</button>
+                <button type="button" class="suggestion-pill" onclick="sendQuickPrompt('Tháng nào tôi chi tiêu nhiều nhất?')"><i class="fa-solid fa-arrow-trend-up me-1"></i>Chi nhiều nhất?</button>
+                <button type="button" class="suggestion-pill" onclick="sendQuickPrompt('Bình quân mỗi tháng tôi tiêu bao nhiêu?')"><i class="fa-solid fa-chart-column me-1"></i>Bình quân tháng</button>
                 <button type="button" class="suggestion-pill" onclick="sendQuickPrompt('Gợi ý cách tối ưu ngân sách theo 50/30/20')">Tiết kiệm 50/30/20</button>
             </div>
             
@@ -392,7 +392,7 @@
                     <div class="mb-3">
                         <label class="form-label">Danh mục ngân sách</label>
                         <select id="budgetCategorySelect" class="form-select">
-                            <option value="">🎯 Tổng ngân sách toàn bộ chi tiêu</option>
+                            <option value="">Tổng ngân sách toàn bộ chi tiêu</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -554,11 +554,10 @@ async function loadDashboard() {
     } catch (e) { console.error('Recent TX error:', e); }
 }
 
-// Chuẩn hóa và làm sạch công thức LaTeX, ký hiệu bóng đèn và biểu tượng trang trí
 function cleanLatexAndDecorations(str) {
     if (!str) return '';
-    // Gỡ bỏ biểu tượng cảm xúc bóng đèn 💡 và khoảng trắng thừa
-    let res = str.replace(/💡\s*/g, '');
+    // Go bo bieu tuong cam xuc va khoang trang thua
+    let res = str.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F600}-\u{1F64F}]\s*/gu, '');
     
     // Xử lý và chuyển đổi công thức LaTeX ($$...$$ hoặc $...$) thành văn bản thuần
     const sanitizeLatexContent = (inner) => {
@@ -635,7 +634,7 @@ async function fetchStaticAnalysis(force = false) {
     
     const userMsg = document.createElement('div');
     userMsg.className = 'chat-msg chat-msg-user';
-    userMsg.textContent = '📄 Yêu cầu báo cáo phân tích chi tiết';
+    userMsg.textContent = 'Yêu cầu báo cáo phân tích chi tiết';
     chatHistory.appendChild(userMsg);
     
     const aiMsg = document.createElement('div');
@@ -696,7 +695,7 @@ async function refreshAiAdvice(force = false) {
     if (chatHistory) {
         chatHistory.innerHTML = `
             <div class="chat-msg chat-msg-ai" id="aiAdvice">
-                👋 <strong>Xin chào!</strong> Tôi là Trợ lý tài chính AI.<br><br>Bạn muốn hỏi gì về tình hình thu chi của mình? Bạn có thể chọn các gợi ý bên dưới hoặc tự nhập câu hỏi trực tiếp.
+                <strong>Xin chào!</strong> Tôi là Trợ lý tài chính AI.<br><br>Bạn muốn hỏi gì về tình hình thu chi của mình? Bạn có thể chọn các gợi ý bên dưới hoặc tự nhập câu hỏi trực tiếp.
             </div>`;
         chatHistory.scrollTop = 0;
     }
@@ -933,17 +932,17 @@ async function loadBudgetWidget(monthStr) {
                 if (percentBadge) percentBadge.style.background = '#64748B';
                 if (barEl) barEl.style.background = '#64748B';
             } else if (data.overall_status === 'exceeded') {
-                if (labelEl) labelEl.textContent = '⚠️ Cảnh báo: Đã vượt quá 100% hạn mức ngân sách!';
+                if (labelEl) labelEl.textContent = 'Cảnh báo: Đã vượt quá 100% hạn mức ngân sách!';
                 if (percentBadge) percentBadge.style.background = '#F43F5E';
                 if (barEl) barEl.style.background = '#F43F5E';
                 if (remainEl) remainEl.className = 'text-danger fw-bold';
             } else if (data.overall_status === 'warning') {
-                if (labelEl) labelEl.textContent = '⚡ Cảnh báo: Chi tiêu đang chạm ngưỡng cảnh báo!';
+                if (labelEl) labelEl.textContent = 'Cảnh báo: Chi tiêu đang chạm ngưỡng cảnh báo!';
                 if (percentBadge) percentBadge.style.background = '#F59E0B';
                 if (barEl) barEl.style.background = '#F59E0B';
                 if (remainEl) remainEl.className = 'text-warning fw-bold';
             } else {
-                if (labelEl) labelEl.textContent = '✅ Chi tiêu trong tầm kiểm soát an toàn';
+                if (labelEl) labelEl.textContent = 'Chi tiêu trong tầm kiểm soát an toàn';
                 if (percentBadge) percentBadge.style.background = '#10B981';
                 if (barEl) barEl.style.background = '#10B981';
                 if (remainEl) remainEl.className = 'text-success fw-bold';
@@ -968,7 +967,7 @@ async function openBudgetModal() {
         if (res.ok) {
             const categories = await res.json();
             const select = document.getElementById('budgetCategorySelect');
-            select.innerHTML = '<option value="">🎯 Tổng ngân sách toàn bộ chi tiêu</option>';
+            select.innerHTML = '<option value="">Tổng ngân sách toàn bộ chi tiêu</option>';
             categories.filter(c => c.type === 'expense').forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c.id;

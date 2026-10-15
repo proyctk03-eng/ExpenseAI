@@ -104,20 +104,20 @@
             <div class="col-6 col-md-2">
                 <select id="filterStatus" class="form-select form-select-sm" onchange="applyFilters()">
                     <option value="">Tất cả trạng thái</option>
-                    <option value="pending">⏳ Chưa xử lý</option>
-                    <option value="in_progress">🔄 Đang xử lý</option>
-                    <option value="resolved">✅ Đã giải quyết</option>
-                    <option value="rejected">❌ Từ chối</option>
+                    <option value="pending">Chưa xử lý</option>
+                    <option value="in_progress">Đang xử lý</option>
+                    <option value="resolved">Đã giải quyết</option>
+                    <option value="rejected">Từ chối</option>
                 </select>
             </div>
             <!-- Topic filter -->
             <div class="col-6 col-md-2">
                 <select id="filterTopic" class="form-select form-select-sm" onchange="applyFilters()">
                     <option value="">Tất cả chủ đề</option>
-                    <option value="bug">🐛 Báo lỗi (Bug)</option>
-                    <option value="feature">💡 Đề xuất tính năng</option>
-                    <option value="complaint">⚠️ Khiếu nại</option>
-                    <option value="other">📌 Khác</option>
+                    <option value="bug">Báo lỗi (Bug)</option>
+                    <option value="feature">Đề xuất tính năng</option>
+                    <option value="complaint">Khiếu nại</option>
+                    <option value="other">Khác</option>
                 </select>
             </div>
             <!-- Date range -->
@@ -211,10 +211,10 @@
                 <div class="d-flex align-items-center gap-2 small">
                     <span class="fw-semibold text-muted"><i class="fa-solid fa-tag me-1"></i>Trạng thái xử lý:</span>
                     <select id="modalStatusSelect" class="form-select form-select-sm status-dropdown-select" onchange="updateTicketStatusFromModal()">
-                        <option value="pending">⏳ Chưa xử lý</option>
-                        <option value="in_progress">🔄 Đang xử lý</option>
-                        <option value="resolved">✅ Đã giải quyết</option>
-                        <option value="rejected">❌ Từ chối / Đóng</option>
+                        <option value="pending">Chưa xử lý</option>
+                        <option value="in_progress">Đang xử lý</option>
+                        <option value="resolved">Đã giải quyết</option>
+                        <option value="rejected">Từ chối / Đóng</option>
                     </select>
                 </div>
                 <div class="small text-muted" id="modalTicketMetaTime">
@@ -269,16 +269,16 @@
                     </div>
                     <div class="d-flex flex-wrap gap-1">
                         <button type="button" class="btn btn-outline-secondary btn-sm btn-quick-template" onclick="applyTemplate(0)">
-                            👋 Đã tiếp nhận
+                            <i class="fa-solid fa-hand me-1 text-primary"></i> Đã tiếp nhận
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm btn-quick-template" onclick="applyTemplate(1)">
-                            🔍 Đang kiểm tra
+                            <i class="fa-solid fa-magnifying-glass me-1 text-info"></i> Đang kiểm tra
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm btn-quick-template" onclick="applyTemplate(2)">
-                            ✅ Đã giải quyết
+                            <i class="fa-solid fa-check me-1 text-success"></i> Đã giải quyết
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm btn-quick-template" onclick="applyTemplate(3)">
-                            ❓ Cần thêm thông tin
+                            <i class="fa-solid fa-question me-1 text-warning"></i> Cần thêm thông tin
                         </button>
                     </div>
                 </div>
@@ -323,10 +323,10 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold small text-dark">Phân loại chủ đề</label>
                         <select id="newTicketTopic" class="form-select">
-                            <option value="bug">🐛 Báo lỗi kỹ thuật (Bug)</option>
-                            <option value="feature">💡 Đề xuất tính năng mới</option>
-                            <option value="complaint">⚠️ Khiếu nại / Góp ý dịch vụ</option>
-                            <option value="other" selected>📌 Khác</option>
+                            <option value="bug">Báo lỗi kỹ thuật (Bug)</option>
+                            <option value="feature">Đề xuất tính năng mới</option>
+                            <option value="complaint">Khiếu nại / Góp ý dịch vụ</option>
+                            <option value="other" selected>Khác</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -614,10 +614,10 @@ const STATUS_CONFIG = {
 };
 
 const QUICK_TEMPLATES = [
-    "👋 Chào bạn, chúng tôi đã tiếp nhận thông tin phản hồi của bạn và đang tiến hành kiểm tra để xử lý trong thời gian sớm nhất.",
-    "🔍 Đội ngũ kỹ thuật đang tiến hành kiểm tra và tái hiện vấn đề này. Chúng tôi sẽ cập nhật tiến độ ngay khi có kết quả.",
-    "✅ Vấn đề của bạn đã được khắc phục hoàn tất. Bạn vui lòng kiểm tra lại trên hệ thống nhé. Cảm ơn bạn đã phản hồi!",
-    "❓ Chào bạn, để hỗ trợ xử lý chính xác hơn, bạn có thể vui lòng cung cấp thêm hình ảnh lỗi hoặc các bước cụ thể bạn đã thao tác không?"
+    "Chào bạn, chúng tôi đã tiếp nhận thông tin phản hồi của bạn và đang tiến hành kiểm tra để xử lý trong thời gian sớm nhất.",
+    "Đội ngũ kỹ thuật đang tiến hành kiểm tra và tái hiện vấn đề này. Chúng tôi sẽ cập nhật tiến độ ngay khi có kết quả.",
+    "Vấn đề của bạn đã được khắc phục hoàn tất. Bạn vui lòng kiểm tra lại trên hệ thống nhé. Cảm ơn bạn đã phản hồi!",
+    "Chào bạn, để hỗ trợ xử lý chính xác hơn, bạn có thể vui lòng cung cấp thêm hình ảnh lỗi hoặc các bước cụ thể bạn đã thao tác không?"
 ];
 
 // ========================================================

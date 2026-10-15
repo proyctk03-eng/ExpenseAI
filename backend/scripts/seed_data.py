@@ -169,17 +169,17 @@ def seed_student_data():
         # Thống kê
         total_income = sum(abs(t["amount"]) for t in transactions if t["amount"] < 0)
         total_expense = sum(t["amount"] for t in transactions if t["amount"] > 0)
-        print(f"✅ Seed dữ liệu sinh viên thành công!")
-        print(f"   👤 Tài khoản: sinhvien / 123456")
-        print(f"   📁 Danh mục: {len(categories_data)} danh mục")
-        print(f"   📝 Giao dịch: {len(transactions)} giao dịch")
-        print(f"   💰 Tổng thu: {total_income:,.0f} ₫")
-        print(f"   💸 Tổng chi: {total_expense:,.0f} ₫")
-        print(f"   📊 Số dư: {total_income - total_expense:,.0f} ₫")
+        print(f"[SUCCESS] Seed dữ liệu sinh viên thành công!")
+        print(f"   - Tài khoản: sinhvien / 123456")
+        print(f"   - Danh mục: {len(categories_data)} danh mục")
+        print(f"   - Giao dịch: {len(transactions)} giao dịch")
+        print(f"   - Tổng thu: {total_income:,.0f} ₫")
+        print(f"   - Tổng chi: {total_expense:,.0f} ₫")
+        print(f"   - Số dư: {total_income - total_expense:,.0f} ₫")
 
     except Exception as e:
         db.rollback()
-        print(f"❌ Lỗi: {e}")
+        print(f"[ERROR] Lỗi: {e}")
         import traceback
         traceback.print_exc()
     finally:

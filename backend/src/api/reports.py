@@ -1,7 +1,7 @@
 """API báo cáo thống kê."""
 from datetime import date, timedelta, datetime
 from typing import Optional
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
 
@@ -12,8 +12,15 @@ from src.utils.dependencies import get_current_user, require_permission
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
 @router.get("/summary")
-def get_summary(month: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(require_permission("report:read"))):
-    target_date = date.fromisoformat(month + "-01") if month else date.today()
+def get_summary(
+    month: Optional[str] = Query(None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="Định dạng YYYY-MM"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("report:read")),
+):
+    try:
+        target_date = date.fromisoformat(month + "-01") if month else date.today()
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Định dạng tháng không hợp lệ. Vui lòng dùng YYYY-MM.")
     
     date_filter = [
         extract('year', Transaction.transaction_date) == target_date.year,
@@ -45,8 +52,15 @@ def get_summary(month: Optional[str] = None, db: Session = Depends(get_db), curr
     }
 
 @router.get("/by_category")
-def get_by_category(month: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(require_permission("report:read"))):
-    target_date = date.fromisoformat(month + "-01") if month else date.today()
+def get_by_category(
+    month: Optional[str] = Query(None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="Định dạng YYYY-MM"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("report:read")),
+):
+    try:
+        target_date = date.fromisoformat(month + "-01") if month else date.today()
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Định dạng tháng không hợp lệ. Vui lòng dùng YYYY-MM.")
     
     base_filter = [
         extract('year', Transaction.transaction_date) == target_date.year,
@@ -122,7 +136,7 @@ def get_monthly_trend(db: Session = Depends(get_db), current_user: User = Depend
 
 @router.get("/export/excel")
 def export_excel_report(
-    month: Optional[str] = None,
+    month: Optional[str] = Query(None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="Định dạng YYYY-MM"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("report:read")),
 ):
@@ -133,7 +147,10 @@ def export_excel_report(
     from openpyxl.utils import get_column_letter
     from fastapi.responses import StreamingResponse
 
-    target_date = date.fromisoformat(month + "-01") if month else None
+    try:
+        target_date = date.fromisoformat(month + "-01") if month else None
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Định dạng tháng không hợp lệ. Vui lòng dùng YYYY-MM.")
 
     # Lấy giao dịch
     q = db.query(Transaction).outerjoin(Category, Transaction.category_id == Category.id)
@@ -242,7 +259,9 @@ def export_excel_report(
     wb.save(output)
     output.seek(0)
 
-    filename = f"ExpenseAI_Report_{month or 'All'}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    import re
+    safe_month = re.sub(r"[^0-9\-]", "", month) if month else "All"
+    filename = f"ExpenseAI_Report_{safe_month}_{datetime.now().strftime('%Y%m%d')}.xlsx"
     headers = {
         "Content-Disposition": f'attachment; filename="{filename}"'
     }

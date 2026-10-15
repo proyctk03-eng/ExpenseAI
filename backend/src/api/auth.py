@@ -133,8 +133,8 @@ def refresh_token(request: Request, db: Session = Depends(get_db)):
 @router.post("/logout")
 def logout():
     resp = JSONResponse(content={"message": "Đăng xuất thành công"})
-    resp.delete_cookie("access_token")
-    resp.delete_cookie("refresh_token")
+    resp.delete_cookie("access_token", path="/", samesite="lax", secure=(ENVIRONMENT == "production"), httponly=True)
+    resp.delete_cookie("refresh_token", path="/", samesite="lax", secure=(ENVIRONMENT == "production"), httponly=True)
     return resp
 
 # S-FIX H-03: Endpoint cung cấp CSRF Token cho client

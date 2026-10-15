@@ -94,12 +94,12 @@ def init_rbac():
             admin_user.roles.append(role_objs["admin"])
             db.commit()
             
-        print("✅ Khởi tạo hệ thống RBAC thành công!")
+        print("[SUCCESS] Khởi tạo hệ thống RBAC thành công!")
         print("   Tài khoản Admin mặc định: admin / admin123")
         
     except Exception as e:
         db.rollback()
-        print(f"❌ Lỗi khi khởi tạo RBAC: {e}")
+        print(f"[ERROR] Lỗi khi khởi tạo RBAC: {e}")
     finally:
         db.close()
 

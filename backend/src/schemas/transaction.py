@@ -3,13 +3,13 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 class TransactionCreate(BaseModel):
-    amount: float = Field(..., gt=0)
+    amount: float = Field(..., gt=0, le=1_000_000_000_000)
     description: str = Field(..., min_length=1, max_length=500)
     category_id: Optional[int] = None
     transaction_date: date
 
 class TransactionUpdate(BaseModel):
-    amount: Optional[float] = Field(None, gt=0)
+    amount: Optional[float] = Field(None, gt=0, le=1_000_000_000_000)
     description: Optional[str] = Field(None, min_length=1, max_length=500)
     category_id: Optional[int] = None
     transaction_date: Optional[date] = None

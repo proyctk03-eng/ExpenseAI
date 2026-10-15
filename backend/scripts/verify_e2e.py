@@ -90,4 +90,4 @@ print('11. AI advice:', r_adv.status_code, r_adv.json()['advice'])
 assert r_adv.status_code == 200
 assert len(r_adv.json()['advice']) > 10
 
-print('\n🎉 TẤT CẢ 11 BƯỚC KIỂM THỬ END-TO-END ĐỀU THÀNH CÔNG RỰC RỠ!')
+print('\n[SUCCESS] TẤT CẢ 11 BƯỚC KIỂM THỬ END-TO-END ĐỀU THÀNH CÔNG RỰC RỠ!')

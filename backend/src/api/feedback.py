@@ -105,7 +105,8 @@ def get_all_feedback(
     if topic:
         query = query.filter(FeedbackTicket.topic == topic)
     if search:
-        query = query.filter(FeedbackTicket.subject.ilike(f"%{search}%"))
+        clean_search = search.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        query = query.filter(FeedbackTicket.subject.ilike(f"%{clean_search}%", escape="\\"))
     if start_date:
         query = query.filter(sa_func.date(FeedbackTicket.created_at) >= start_date)
     if end_date:

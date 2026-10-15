@@ -112,9 +112,12 @@ def create_or_update_budget(
 ):
     """Tạo mới hoặc cập nhật hạn mức ngân sách."""
     if budget_in.category_id:
-        category = db.query(Category).filter(Category.id == budget_in.category_id).first()
+        category = db.query(Category).filter(
+            Category.id == budget_in.category_id,
+            (Category.user_id == current_user.id) | (Category.user_id.is_(None))
+        ).first()
         if not category:
-            raise HTTPException(status_code=404, detail="Danh mục không tồn tại")
+            raise HTTPException(status_code=404, detail="Danh mục không tồn tại hoặc không thuộc quyền sở hữu của bạn")
         if category.type != "expense":
             raise HTTPException(status_code=400, detail="Chỉ có thể đặt ngân sách cho danh mục Chi tiêu")
 

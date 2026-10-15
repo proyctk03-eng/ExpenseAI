@@ -22,10 +22,12 @@ GEMINI_API_KEY_BACKUP = os.getenv("GEMINI_API_KEY_BACKUP", "") or os.getenv("GEM
 def get_gemini_api_keys() -> list:
     """Trả về danh sách Google Gemini API Keys theo thứ tự ưu tiên (Primary -> Backup)."""
     keys = []
-    if GEMINI_API_KEY and GEMINI_API_KEY != "mock-api-key-for-testing":
-        keys.append(GEMINI_API_KEY)
-    if GEMINI_API_KEY_BACKUP and GEMINI_API_KEY_BACKUP != "mock-api-key-for-testing" and GEMINI_API_KEY_BACKUP not in keys:
-        keys.append(GEMINI_API_KEY_BACKUP)
+    primary = (os.getenv("GEMINI_API_KEY", "") or GEMINI_API_KEY).strip()
+    backup = (os.getenv("GEMINI_API_KEY_BACKUP", "") or os.getenv("GEMINI_BACKUP_API_KEY", "") or GEMINI_API_KEY_BACKUP).strip()
+    if primary and primary != "mock-api-key-for-testing":
+        keys.append(primary)
+    if backup and backup != "mock-api-key-for-testing" and backup not in keys:
+        keys.append(backup)
     return keys
 
 # --- SECRET_KEY: KHÔNG dùng hardcoded fallback (S1 Security Fix) ---

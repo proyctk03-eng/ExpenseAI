@@ -41,11 +41,19 @@ async def process_receipt_background(base64_str: str, mime_type: str, user_id: i
             return
 
         async with AsyncSessionLocal() as db:
-            norm_desc = result.get("description", "Hóa đơn tự động")
-            amount = result.get("amount", 0)
+            import math
+            norm_desc = str(result.get("description", "Hóa đơn tự động") or "").strip()[:255] or "Hóa đơn tự động"
+            raw_amount = result.get("amount", 0)
+            try:
+                amount = float(raw_amount)
+                if amount < 0 or math.isnan(amount) or math.isinf(amount) or amount > 1_000_000_000_000:
+                    amount = 0.0
+            except (ValueError, TypeError):
+                amount = 0.0
+
             tx_date_str = result.get("date", str(date.today()))
             try:
-                tx_date = datetime.strptime(tx_date_str, "%Y-%m-%d").date()
+                tx_date = datetime.strptime(str(tx_date_str), "%Y-%m-%d").date()
             except (ValueError, TypeError):
                 tx_date = date.today()
 
@@ -169,7 +177,8 @@ async def get_transactions(
         stmt = stmt.filter(Transaction.user_id == current_user.id)
 
     if search:
-        stmt = stmt.filter(Transaction.description.ilike(f"%{search.strip()}%"))
+        clean_search = search.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        stmt = stmt.filter(Transaction.description.ilike(f"%{clean_search}%", escape="\\"))
     if start_date:
         stmt = stmt.filter(Transaction.transaction_date >= start_date)
     if end_date:
@@ -245,7 +254,17 @@ async def create_transaction(
         category_id = tx_in.category_id
         ai_pred_data = None
 
-        if not category_id:
+        if category_id:
+            # S-FIX PENTEST: Kiểm tra xem category có tồn tại và thuộc về user hoặc là system category không
+            stmt_chk = select(Category).filter(
+                Category.id == category_id,
+                (Category.user_id == current_user.id) | (Category.user_id.is_(None))
+            )
+            res_chk = await db.execute(stmt_chk)
+            valid_cat = res_chk.scalars().first()
+            if not valid_cat:
+                raise HTTPException(status_code=400, detail="Danh mục không tồn tại hoặc không thuộc quyền sở hữu của bạn.")
+        else:
             try:
                 res = await ai_classifier.classify(norm_desc, user_id=current_user.id, db=db)
                 pred_cat_name = res.get("category", "Khác")
@@ -330,6 +349,16 @@ async def update_transaction(
 
     if not tx:
         raise HTTPException(status_code=404, detail="Không tìm thấy giao dịch")
+
+    if tx_in.category_id is not None:
+        # S-FIX PENTEST: Kiểm tra xem category_id có thuộc quyền sở hữu của user không
+        stmt_chk = select(Category).filter(
+            Category.id == tx_in.category_id,
+            (Category.user_id == current_user.id) | (Category.user_id.is_(None))
+        )
+        res_chk = await db.execute(stmt_chk)
+        if not res_chk.scalars().first():
+            raise HTTPException(status_code=400, detail="Danh mục không tồn tại hoặc không thuộc quyền sở hữu của bạn.")
 
     if tx_in.category_id is not None and tx_in.category_id != tx.category_id:
         try:

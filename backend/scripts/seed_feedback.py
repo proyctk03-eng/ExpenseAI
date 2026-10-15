@@ -209,7 +209,7 @@ def seed_correct_feedback():
                 db.add(rep)
 
         db.commit()
-        print(f"✅ Đã tạo thành công {len(sample_tickets)} feedback tickets chuẩn:")
+        print(f"[SUCCESS] Đã tạo thành công {len(sample_tickets)} feedback tickets chuẩn:")
         print("   - Người gửi (Users): sinhvien (3 tickets), tran_thi_bich, le_hoang_nam, vu_mai_anh")
         print("   - Người tiếp nhận & xử lý (Admin): admin")
     except Exception as e:

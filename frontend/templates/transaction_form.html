@@ -29,7 +29,7 @@
                     <div class="mb-3">
                         <label class="form-label">Danh mục</label>
                         <select id="txCategory" class="form-select">
-                            <option value="">✨ AI tự động phân loại</option>
+                            <option value="">AI tự động phân loại</option>
                         </select>
                     </div>
                     <div class="mb-4">
@@ -55,7 +55,7 @@ async function loadCategoriesIntoSelect() {
         if (res.ok) {
             const categories = await res.json();
             const select = document.getElementById('txCategory');
-            select.innerHTML = '<option value="">✨ AI tự động phân loại</option>';
+            select.innerHTML = '<option value="">AI tự động phân loại</option>';
             
             const expenseGroup = document.createElement('optgroup');
             expenseGroup.label = 'Chi tiêu';

@@ -191,7 +191,7 @@
                         </div>
                         <div class="form-text">Hệ thống sẽ gửi cảnh báo màu vàng khi bạn chi vượt ngưỡng này (khuyến nghị 85%).</div>
                     </div>
-                    <button type="submit" class="btn btn-glass w-100 py-2">
+                    <button type="submit" class="btn btn-glass w-100 py-2" id="btnSaveBudget">
                         <i class="fa-solid fa-check me-1"></i> Lưu Ngân Sách
                     </button>
                 </form>
@@ -299,7 +299,7 @@ function renderSummary(summary) {
     const warningItems = currentBudgets.filter(b => b.status === 'warning' || b.status === 'exceeded');
     if (warningItems.length > 0) {
         alertBanner.classList.remove('d-none');
-        const listText = warningItems.map(b => `<strong>${b.category_name || 'Ngân sách chung'}</strong> (${b.percentage}%)`).join(', ');
+        const listText = warningItems.map(b => `<strong>${escapeHtml(b.category_name || 'Ngân sách chung')}</strong> (${escapeHtml(String(b.percentage))}%)`).join(', ');
         document.getElementById('alertBannerText').innerHTML = `Các khoản: ${listText} đang ở mức báo động hoặc đã vượt quá trần quy định. Hãy cân nhắc hoãn lại các khoản mua sắm không cấp thiết!`;
     } else {
         alertBanner.classList.add('d-none');
@@ -347,7 +347,7 @@ function renderBudgetItems(items) {
                             <div class="p-2 rounded-3 bg-primary-subtle text-primary">
                                 <i class="fa-solid fa-tag"></i>
                             </div>
-                            <span class="fw-bold fs-6 text-truncate" title="${name}">${name}</span>
+                            <span class="fw-bold fs-6 text-truncate" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
                         </div>
                         <span class="status-pill ${badgeClass}">${badgeText}</span>
                     </div>
@@ -386,8 +386,22 @@ function openCreateModal() {
     modalInstance.show();
 }
 
+let isBudgetSubmitting = false;
+
 async function handleBudgetSubmit(e) {
     e.preventDefault();
+    if (isBudgetSubmitting) return;
+
+    const saveBtn = document.getElementById('btnSaveBudget');
+    const formInputs = document.querySelectorAll('#budgetForm input, #budgetForm select');
+
+    isBudgetSubmitting = true;
+    if (saveBtn) {
+        saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang lưu...';
+        saveBtn.disabled = true;
+    }
+    formInputs.forEach(el => el.disabled = true);
+
     const month = document.getElementById('formMonth').value;
     const catVal = document.getElementById('formCategory').value;
     const amount_limit = parseFloat(document.getElementById('formAmountLimit').value);
@@ -418,6 +432,13 @@ async function handleBudgetSubmit(e) {
         }
     } catch (e) {
         showToast('Lỗi kết nối máy chủ', 'danger');
+    } finally {
+        if (saveBtn) {
+            saveBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Lưu Ngân Sách';
+            saveBtn.disabled = false;
+        }
+        formInputs.forEach(el => el.disabled = false);
+        isBudgetSubmitting = false;
     }
 }
 

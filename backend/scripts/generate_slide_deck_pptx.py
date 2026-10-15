@@ -147,7 +147,7 @@ def create_presentation():
         ("categories", "Danh mục thu/chi hệ thống & danh mục tự tạo cá nhân."),
         ("transactions", "Giao dịch phát sinh (amount, description, date, foreign keys)."),
         ("ai_predictions", "Nhật ký dự đoán danh mục của AI và chỉ số confidence."),
-        ("user_memory_rules", "⭐ Tầng bộ nhớ Agent Memory: Quy tắc tự học riêng của User."),
+        ("user_memory_rules", "Tầng bộ nhớ Agent Memory: Quy tắc tự học riêng của User."),
         ("roles & perms", "4 bảng RBAC quản trị ma trận quyền truy cập đa cấp.")
     ]
     for i, (name, role) in enumerate(entities):
@@ -160,7 +160,7 @@ def create_presentation():
         tf = tb.text_frame
         tf.word_wrap = True
         p = tf.paragraphs[0]
-        add_r(p, f"📁 {name}", 15, True, COLOR_NAVY_BLUE)
+        add_r(p, f"Bảng: {name}", 15, True, COLOR_NAVY_BLUE)
         p2 = tf.add_paragraph()
         p2.space_before = Pt(8)
         add_r(p2, role, 11, False, COLOR_SLATE_BODY)
@@ -211,12 +211,12 @@ def create_presentation():
     p_metrics = tf_r.add_paragraph()
     p_metrics.space_before = Pt(14)
     add_r(p_metrics, 
-        "🎯 Độ chính xác tổng thể (Accuracy): 96.0%\n\n"
-        "🔍 Độ chuẩn xác (Precision): 95.8%\n\n"
-        "📊 Độ bao phủ (Recall): 96.2%\n\n"
-        "⭐ F1-Score tổng hợp: 96.0%\n\n"
-        "⚡ Thời gian phản hồi trung bình: < 650ms\n"
-        "🔒 Kiểm soát ảo giác hoàn toàn nhờ JSON Schema ràng buộc", 13, True, COLOR_SLATE_DARK)
+        "- Độ chính xác tổng thể (Accuracy): 96.0%\n\n"
+        "- Độ chuẩn xác (Precision): 95.8%\n\n"
+        "- Độ bao phủ (Recall): 96.2%\n\n"
+        "- F1-Score tổng hợp: 96.0%\n\n"
+        "- Thời gian phản hồi trung bình: < 650ms\n"
+        "- Kiểm soát ảo giác hoàn toàn nhờ JSON Schema ràng buộc", 13, True, COLOR_SLATE_DARK)
 
     # SLIDE 7: ĐỘT PHÁ BỘ NHỚ AGENT MEMORY
     s7 = prs.slides.add_slide(blank_layout)
@@ -251,7 +251,7 @@ def create_presentation():
     p2 = tf_ci1.add_paragraph()
     p2.space_before = Pt(10)
     add_r(p2, 
-        "✅ 36/36 Test Cases PASS 100%\n\n"
+        "[PASS] 36/36 Test Cases PASS 100%\n\n"
         "• Kiểm tra xác thực JWT & Cookie bảo mật\n"
         "• Kiểm tra phân quyền RBAC & Chống rò rỉ IDOR\n"
         "• Kiểm tra toàn bộ CRUD Giao dịch & Danh mục\n"
@@ -268,7 +268,7 @@ def create_presentation():
     p_ci_steps = tf_ci2.add_paragraph()
     p_ci_steps.space_before = Pt(10)
     add_r(p_ci_steps, 
-        "🚀 Trạng thái Pipeline: SUCCESS (Xanh 100%)\n\n"
+        "[CI/CD] Trạng thái Pipeline: SUCCESS (100% Passed)\n\n"
         "• Ma trận kiểm thử đa môi trường: Tự động chạy trên cả 3 phiên bản Python 3.10, 3.11, 3.12.\n\n"
         "• CSDL Kiểm thử thực: Kết nối trực tiếp PostgreSQL 15 Service Container.\n\n"
         "• Bảo mật CI/CD: Tích hợp Trivy Vulnerability Scanner với quyền security-events: write.\n\n"
@@ -312,10 +312,10 @@ def create_presentation():
     p_e2 = tf_end.add_paragraph()
     p_e2.space_before = Pt(16)
     add_r(p_e2, 
-        "✔ Hoàn thành 100% toàn bộ 40/40 tiêu chí đánh giá của Học phần ICTU.\n"
-        "✔ Tích hợp thành công Invisible AI và Đột phá Bộ nhớ tự học Agent Memory.\n"
-        "✔ Giao diện OpenDesign Glassmorphism hiện đại, responsive và mượt mà.\n"
-        "✔ Chất lượng phần mềm đảm bảo: 36/36 tests PASS, CI/CD Actions xanh 100%.\n\n"
+        "- Hoàn thành 100% toàn bộ 40/40 tiêu chí đánh giá của Học phần ICTU.\n"
+        "- Tích hợp thành công Invisible AI và Đột phá Bộ nhớ tự học Agent Memory.\n"
+        "- Giao diện OpenDesign Glassmorphism hiện đại, responsive và mượt mà.\n"
+        "- Chất lượng phần mềm đảm bảo: 36/36 tests PASS, CI/CD Actions xanh 100%.\n\n"
         "XIN TRÂN TRỌNG CẢM ƠN THẦY CÔ HỘI ĐỒNG VÀ CÁC BẠN ĐÃ LẮNG NGHE!", 16, False, COLOR_WHITE)
 
     prs.save("docs/Slide_Bao_Ve_Nhom_02.pptx")

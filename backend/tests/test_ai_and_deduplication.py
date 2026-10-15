@@ -159,5 +159,5 @@ class TestAIAdviceOptimization:
         )
         assert "31 ngày" in reply
         assert "3.100.000 VNĐ" in reply
-        assert "💡" not in reply
+        assert "\U0001f4a1" not in reply
         assert "$$" not in reply
